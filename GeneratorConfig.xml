@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN" "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+        <generatorConfiguration>
+    <classPathEntry location="D:\Java\maven\repository\mysql\mysql-connector-java\8.0.27\mysql-connector-java-8.0.27.jar" />
+    <!--配置项-->
+    <context id="msqlTables" targetRuntime="MyBatis3">
+        <property name="nullCatalogMeansCurrent" value="true"/>
+       <plugin type="org.mybatis.generator.plugins.SerializablePlugin"></plugin>
+        <!--配置生成规则-->
+        <commentGenerator>
+            <!-- 是否去除自动生成的注释 true：是 ： false:否 -->
+            <property name="suppressAllComments" value="true" />
+            <!-- 阻止注释中包含时间戳 true：是 ： false:否 -->
+            <property name="suppressDate" value="true" />
+            <!--  注释是否包含数据库表的注释信息  true：是 ： false:否 -->
+            <property name="addRemarkComments" value="true" />
+        </commentGenerator>
+        <!--配置数据库链接信息-->
+        <jdbcConnection connectionURL="jdbc:mysql://localhost:3306/homic?serverTimezone=Asia/Shanghai"
+                        driverClass="com.mysql.cj.jdbc.Driver" password="123456" userId="root" >
+
+        </jdbcConnection>
+        <javaTypeResolver>
+            <property name="forceBigDecimals" value="false" />
+        </javaTypeResolver>
+        <!--生成module类-->
+       <javaModelGenerator targetPackage="com.example.homic.model" targetProject="src/main/java">
+                 <property name="enableSubPackages" value="true"/>
+                <property name="trimStrings" value="true" />
+        </javaModelGenerator>
+        <sqlMapGenerator targetPackage="com.example.homic.mapper" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true"/>
+        </sqlMapGenerator>
+        <javaClientGenerator type="XMLMAPPER" targetPackage="com.example.homic.mapper" targetProject="src/main/java">
+            <property name="enableSubPackages" value="true"/>
+        </javaClientGenerator>
+
+
+        <!--映射 数据库表 和 实体类-->
+        <table tableName="file_share" domainObjectName="FileShare"
+                               enableCountByExample="false" enableUpdateByExample="false" enableDeleteByExample="false"
+                               enableSelectByExample="false" selectByExampleQueryId="false" >
+        <property name="useActualColumnNames" value="false"/>
+        </table>
+    </context>
+         </generatorConfiguration>

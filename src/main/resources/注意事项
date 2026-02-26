@@ -1,0 +1,6 @@
+1.jrebel的快捷键：ctrl + shift + f9
+2.mybatis-plus逆向工程生成方法：在Maven板块选中逆向工程插件并运行
+3.module是用于数据库传输的直接对象，dto是用于后端内部传输的包装类,vo是用于传输给前端的屏蔽掉敏感内容的对象，pojo是一般实体类
+4.我的大号授权码：jlkumfusxdkcdgfa，小号授权码：puadvclpjntedbbi
+5.Json.toJSONString(object,SerializerFeature.IgnoreErrorGetter)一定要加上第二个参数，否则很容易报错
+6.一定一定一定要关闭输出输入流！！！！！！！！！！！！！！！！！！否则会让文件被长期占用而不能修改删除

@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.homic.mapper.FileInfoMapper">
+  <resultMap id="BaseResultMap" type="com.example.homic.model.FileInfo">
+    <id column="file_id" jdbcType="VARCHAR" property="fileId" />
+    <id column="user_id" jdbcType="VARCHAR" property="userId" />
+    <result column="file_md5" jdbcType="VARCHAR" property="fileMd5" />
+    <result column="file_pid" jdbcType="VARCHAR" property="filePid" />
+    <result column="file_size" jdbcType="BIGINT" property="fileSize" />
+    <result column="file_name" jdbcType="VARCHAR" property="fileName" />
+    <result column="file_cover" jdbcType="VARCHAR" property="fileCover" />
+    <result column="file_path" jdbcType="VARCHAR" property="filePath" />
+    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="last_update_time" jdbcType="TIMESTAMP" property="lastUpdateTime" />
+    <result column="folder_type" jdbcType="INTEGER" property="folderType" />
+    <result column="file_category" jdbcType="INTEGER" property="fileCategory" />
+    <result column="file_type" jdbcType="INTEGER" property="fileType" />
+    <result column="status" jdbcType="INTEGER" property="status" />
+    <result column="recovery_time" jdbcType="TIMESTAMP" property="recoveryTime" />
+    <result column="del_flag" jdbcType="INTEGER" property="delFlag" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    file_id, user_id, file_md5, file_pid, file_size, file_name, file_cover, file_path,
+    create_time, last_update_time, folder_type, file_category, file_type, status, recovery_time,
+    del_flag
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="com.example.homic.model.FileInfoKey" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from file_info
+    where file_id = #{fileId,jdbcType=VARCHAR}
+      and user_id = #{userId,jdbcType=VARCHAR}
+  </select>
+  <!--根据UserId计算该用户使用的总空间,注意resultMap和resultType不能同时使用，Map填映射 BaseResultMap,Type填 类引用路径-->
+  <select id="getSizeByUserId" parameterType="java.lang.String" resultType="java.lang.Long">
+    select
+    sum(file_size)
+    from file_info
+    where user_id = #{userId,jdbcType=VARCHAR}
+  </select>
+  <!--根据md5值获取文件信息-->
+  <select id="selectOneByFileMd5" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from file_info
+    where file_md5 = #{fileMd5,jdbcType=VARCHAR}
+    limit 1
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="com.example.homic.model.FileInfoKey">
+    delete from file_info
+    where file_id = #{fileId,jdbcType=VARCHAR}
+      and user_id = #{userId,jdbcType=VARCHAR}
+  </delete>
+  <insert id="insert" parameterType="com.example.homic.model.FileInfo">
+    insert into file_info (file_id, user_id, file_md5,
+      file_pid, file_size, file_name,
+      file_cover, file_path, create_time,
+      last_update_time, folder_type, file_category,
+      file_type, status, recovery_time,
+      del_flag)
+    values (#{fileId,jdbcType=VARCHAR}, #{userId,jdbcType=VARCHAR}, #{fileMd5,jdbcType=VARCHAR},
+      #{filePid,jdbcType=VARCHAR}, #{fileSize,jdbcType=BIGINT}, #{fileName,jdbcType=VARCHAR},
+      #{fileCover,jdbcType=VARCHAR}, #{filePath,jdbcType=VARCHAR}, #{createTime,jdbcType=TIMESTAMP},
+      #{lastUpdateTime,jdbcType=TIMESTAMP}, #{folderType,jdbcType=INTEGER}, #{fileCategory,jdbcType=INTEGER},
+      #{fileType,jdbcType=INTEGER}, #{status,jdbcType=INTEGER}, #{recoveryTime,jdbcType=TIMESTAMP},
+      #{delFlag,jdbcType=INTEGER})
+  </insert>
+  <insert id="insertSelective" parameterType="com.example.homic.model.FileInfo">
+    insert into file_info
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="fileId != null">
+        file_id,
+      </if>
+      <if test="userId != null">
+        user_id,
+      </if>
+      <if test="fileMd5 != null">
+        file_md5,
+      </if>
+      <if test="filePid != null">
+        file_pid,
+      </if>
+      <if test="fileSize != null">
+        file_size,
+      </if>
+      <if test="fileName != null">
+        file_name,
+      </if>
+      <if test="fileCover != null">
+        file_cover,
+      </if>
+      <if test="filePath != null">
+        file_path,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+      <if test="lastUpdateTime != null">
+        last_update_time,
+      </if>
+      <if test="folderType != null">
+        folder_type,
+      </if>
+      <if test="fileCategory != null">
+        file_category,
+      </if>
+      <if test="fileType != null">
+        file_type,
+      </if>
+      <if test="status != null">
+        status,
+      </if>
+      <if test="recoveryTime != null">
+        recovery_time,
+      </if>
+      <if test="delFlag != null">
+        del_flag,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="fileId != null">
+        #{fileId,jdbcType=VARCHAR},
+      </if>
+      <if test="userId != null">
+        #{userId,jdbcType=VARCHAR},
+      </if>
+      <if test="fileMd5 != null">
+        #{fileMd5,jdbcType=VARCHAR},
+      </if>
+      <if test="filePid != null">
+        #{filePid,jdbcType=VARCHAR},
+      </if>
+      <if test="fileSize != null">
+        #{fileSize,jdbcType=BIGINT},
+      </if>
+      <if test="fileName != null">
+        #{fileName,jdbcType=VARCHAR},
+      </if>
+      <if test="fileCover != null">
+        #{fileCover,jdbcType=VARCHAR},
+      </if>
+      <if test="filePath != null">
+        #{filePath,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="lastUpdateTime != null">
+        #{lastUpdateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="folderType != null">
+        #{folderType,jdbcType=INTEGER},
+      </if>
+      <if test="fileCategory != null">
+        #{fileCategory,jdbcType=INTEGER},
+      </if>
+      <if test="fileType != null">
+        #{fileType,jdbcType=INTEGER},
+      </if>
+      <if test="status != null">
+        #{status,jdbcType=INTEGER},
+      </if>
+      <if test="recoveryTime != null">
+        #{recoveryTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="delFlag != null">
+        #{delFlag,jdbcType=INTEGER},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.example.homic.model.FileInfo">
+    update file_info
+    <set>
+      <if test="fileMd5 != null">
+        file_md5 = #{fileMd5,jdbcType=VARCHAR},
+      </if>
+      <if test="filePid != null">
+        file_pid = #{filePid,jdbcType=VARCHAR},
+      </if>
+      <if test="fileSize != null">
+        file_size = #{fileSize,jdbcType=BIGINT},
+      </if>
+      <if test="fileName != null">
+        file_name = #{fileName,jdbcType=VARCHAR},
+      </if>
+      <if test="fileCover != null">
+        file_cover = #{fileCover,jdbcType=VARCHAR},
+      </if>
+      <if test="filePath != null">
+        file_path = #{filePath,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="lastUpdateTime != null">
+        last_update_time = #{lastUpdateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="folderType != null">
+        folder_type = #{folderType,jdbcType=INTEGER},
+      </if>
+      <if test="fileCategory != null">
+        file_category = #{fileCategory,jdbcType=INTEGER},
+      </if>
+      <if test="fileType != null">
+        file_type = #{fileType,jdbcType=INTEGER},
+      </if>
+      <if test="status != null">
+        status = #{status,jdbcType=INTEGER},
+      </if>
+      <if test="recoveryTime != null">
+        recovery_time = #{recoveryTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="delFlag != null">
+        del_flag = #{delFlag,jdbcType=INTEGER},
+      </if>
+    </set>
+    where file_id = #{fileId,jdbcType=VARCHAR}
+      and user_id = #{userId,jdbcType=VARCHAR}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.example.homic.model.FileInfo">
+    update file_info
+    set file_md5 = #{fileMd5,jdbcType=VARCHAR},
+      file_pid = #{filePid,jdbcType=VARCHAR},
+      file_size = #{fileSize,jdbcType=BIGINT},
+      file_name = #{fileName,jdbcType=VARCHAR},
+      file_cover = #{fileCover,jdbcType=VARCHAR},
+      file_path = #{filePath,jdbcType=VARCHAR},
+      create_time = #{createTime,jdbcType=TIMESTAMP},
+      last_update_time = #{lastUpdateTime,jdbcType=TIMESTAMP},
+      folder_type = #{folderType,jdbcType=INTEGER},
+      file_category = #{fileCategory,jdbcType=INTEGER},
+      file_type = #{fileType,jdbcType=INTEGER},
+      status = #{status,jdbcType=INTEGER},
+      recovery_time = #{recoveryTime,jdbcType=TIMESTAMP},
+      del_flag = #{delFlag,jdbcType=INTEGER}
+    where file_id = #{fileId,jdbcType=VARCHAR}
+      and user_id = #{userId,jdbcType=VARCHAR}
+  </update>
+</mapper>

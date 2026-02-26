@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.homic.mapper.FileShareMapper">
+  <resultMap id="BaseResultMap" type="com.example.homic.model.FileShare">
+    <id column="share_id" jdbcType="VARCHAR" property="shareId" />
+    <result column="file_id" jdbcType="VARCHAR" property="fileId" />
+    <result column="user_id" jdbcType="VARCHAR" property="userId" />
+    <result column="valid_type" jdbcType="INTEGER" property="validType" />
+    <result column="expire_time" jdbcType="TIMESTAMP" property="expireTime" />
+    <result column="code" jdbcType="VARCHAR" property="code" />
+    <result column="show_count" jdbcType="INTEGER" property="showCount" />
+    <result column="share_time" jdbcType="TIMESTAMP" property="shareTime" />
+    <result column="file_name" jdbcType="VARCHAR" property="fileName" />
+    <result column="folder_type" jdbcType="INTEGER" property="folderType" />
+    <result column="file_Category" jdbcType="INTEGER" property="fileCategory" />
+    <result column="file_type" jdbcType="INTEGER" property="fileType" />
+    <result column="file_cover" jdbcType="VARCHAR" property="fileCover" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    share_id, file_id, user_id, valid_type, expire_time, code, show_count, share_time,
+    file_name, folder_type, file_Category, file_type, file_cover
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from file_share
+    where share_id = #{shareId,jdbcType=VARCHAR}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.String">
+    delete from file_share
+    where share_id = #{shareId,jdbcType=VARCHAR}
+  </delete>
+  <insert id="insert" parameterType="com.example.homic.model.FileShare">
+    insert into file_share (share_id, file_id, user_id,
+      valid_type, expire_time, code,
+      show_count, share_time, file_name,
+      folder_type, file_Category, file_type,
+      file_cover)
+    values (#{shareId,jdbcType=VARCHAR}, #{fileId,jdbcType=VARCHAR}, #{userId,jdbcType=VARCHAR},
+      #{validType,jdbcType=INTEGER}, #{expireTime,jdbcType=TIMESTAMP}, #{code,jdbcType=VARCHAR},
+      #{showCount,jdbcType=INTEGER}, #{shareTime,jdbcType=TIMESTAMP}, #{fileName,jdbcType=VARCHAR},
+      #{folderType,jdbcType=INTEGER}, #{fileCategory,jdbcType=INTEGER}, #{fileType,jdbcType=INTEGER},
+      #{fileCover,jdbcType=VARCHAR})
+  </insert>
+  <insert id="insertSelective" parameterType="com.example.homic.model.FileShare">
+    insert into file_share
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="shareId != null">
+        share_id,
+      </if>
+      <if test="fileId != null">
+        file_id,
+      </if>
+      <if test="userId != null">
+        user_id,
+      </if>
+      <if test="validType != null">
+        valid_type,
+      </if>
+      <if test="expireTime != null">
+        expire_time,
+      </if>
+      <if test="code != null">
+        code,
+      </if>
+      <if test="showCount != null">
+        show_count,
+      </if>
+      <if test="shareTime != null">
+        share_time,
+      </if>
+      <if test="fileName != null">
+        file_name,
+      </if>
+      <if test="folderType != null">
+        folder_type,
+      </if>
+      <if test="fileCategory != null">
+        file_Category,
+      </if>
+      <if test="fileType != null">
+        file_type,
+      </if>
+      <if test="fileCover != null">
+        file_cover,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="shareId != null">
+        #{shareId,jdbcType=VARCHAR},
+      </if>
+      <if test="fileId != null">
+        #{fileId,jdbcType=VARCHAR},
+      </if>
+      <if test="userId != null">
+        #{userId,jdbcType=VARCHAR},
+      </if>
+      <if test="validType != null">
+        #{validType,jdbcType=INTEGER},
+      </if>
+      <if test="expireTime != null">
+        #{expireTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="code != null">
+        #{code,jdbcType=VARCHAR},
+      </if>
+      <if test="showCount != null">
+        #{showCount,jdbcType=INTEGER},
+      </if>
+      <if test="shareTime != null">
+        #{shareTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="fileName != null">
+        #{fileName,jdbcType=VARCHAR},
+      </if>
+      <if test="folderType != null">
+        #{folderType,jdbcType=INTEGER},
+      </if>
+      <if test="fileCategory != null">
+        #{fileCategory,jdbcType=INTEGER},
+      </if>
+      <if test="fileType != null">
+        #{fileType,jdbcType=INTEGER},
+      </if>
+      <if test="fileCover != null">
+        #{fileCover,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.example.homic.model.FileShare">
+    update file_share
+    <set>
+      <if test="fileId != null">
+        file_id = #{fileId,jdbcType=VARCHAR},
+      </if>
+      <if test="userId != null">
+        user_id = #{userId,jdbcType=VARCHAR},
+      </if>
+      <if test="validType != null">
+        valid_type = #{validType,jdbcType=INTEGER},
+      </if>
+      <if test="expireTime != null">
+        expire_time = #{expireTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="code != null">
+        code = #{code,jdbcType=VARCHAR},
+      </if>
+      <if test="showCount != null">
+        show_count = #{showCount,jdbcType=INTEGER},
+      </if>
+      <if test="shareTime != null">
+        share_time = #{shareTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="fileName != null">
+        file_name = #{fileName,jdbcType=VARCHAR},
+      </if>
+      <if test="folderType != null">
+        folder_type = #{folderType,jdbcType=INTEGER},
+      </if>
+      <if test="fileCategory != null">
+        file_Category = #{fileCategory,jdbcType=INTEGER},
+      </if>
+      <if test="fileType != null">
+        file_type = #{fileType,jdbcType=INTEGER},
+      </if>
+      <if test="fileCover != null">
+        file_cover = #{fileCover,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where share_id = #{shareId,jdbcType=VARCHAR}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.example.homic.model.FileShare">
+    update file_share
+    set file_id = #{fileId,jdbcType=VARCHAR},
+      user_id = #{userId,jdbcType=VARCHAR},
+      valid_type = #{validType,jdbcType=INTEGER},
+      expire_time = #{expireTime,jdbcType=TIMESTAMP},
+      code = #{code,jdbcType=VARCHAR},
+      show_count = #{showCount,jdbcType=INTEGER},
+      share_time = #{shareTime,jdbcType=TIMESTAMP},
+      file_name = #{fileName,jdbcType=VARCHAR},
+      folder_type = #{folderType,jdbcType=INTEGER},
+      file_Category = #{fileCategory,jdbcType=INTEGER},
+      file_type = #{fileType,jdbcType=INTEGER},
+      file_cover = #{fileCover,jdbcType=VARCHAR}
+    where share_id = #{shareId,jdbcType=VARCHAR}
+  </update>
+</mapper>
