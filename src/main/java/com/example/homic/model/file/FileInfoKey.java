@@ -1,4 +1,4 @@
-package com.example.homic.model;
+package com.example.homic.model.file;
 
 import java.io.Serializable;
 

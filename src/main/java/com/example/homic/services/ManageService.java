@@ -32,7 +32,7 @@ public interface ManageService {
      * @return
      */
 
-    FileInfoVO reNameFile(String fileId, String fileName, String userId);
+    FileInfoVO renameFile(String fileId, String fileName, String userId);
 
     /**
      * 获取文件夹信息

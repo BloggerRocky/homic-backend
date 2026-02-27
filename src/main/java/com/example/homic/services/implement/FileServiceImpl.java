@@ -15,17 +15,14 @@ import com.example.homic.dto.frontEnd.UploadDTO;
 import com.example.homic.exception.MyException;
 import com.example.homic.mapper.FileInfoMapper;
 import com.example.homic.mapper.UserInfoMapper;
-import com.example.homic.model.FileInfo;
-import com.example.homic.model.UserInfo;
+import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.FileService;
 import com.example.homic.utils.*;
 import com.example.homic.vo.*;
 import io.minio.GetObjectResponse;
-import org.jetbrains.annotations.NotNull;
 import org.modelmapper.ModelMapper;
 
 import static com.example.homic.constants.CodeConstants.*;
-import static com.example.homic.constants.enums.DatePatternEnum.YEAR_MONTH;
 import static com.example.homic.constants.enums.DatePatternEnum.YEAR_MONTH_DAY;
 import static com.example.homic.constants.enums.FileFlagEnum.NORMAL;
 import org.slf4j.Logger;
@@ -57,9 +54,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
     @Autowired
     AppProperties appProperties;
     @Autowired
-    RedisUtils<RedisUseSpaceDTO> redisUtilsForUserSpace;
-    @Autowired
-    RedisUtils<String> redisUtilsForString;
+    com.example.homic.config.RedisManager redisManager;
     @Autowired
     UserInfoMapper userInfoMapper;
     @Autowired
@@ -67,16 +62,12 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
     @Autowired
     ModelMapper modelMapper;
     @Autowired
-    LambdaQueryWrapper<FileInfo> fileInfoLqw;
-    @Autowired
     MinioUtils minioUtils;
-    @Autowired
-    FfmpegUtils ffmpegUtils;
     @Autowired
     RabbitTemplate rabbitTemplate;
     @Override
     public ResponseVO loadDataList(QueryInfoDTO queryInfoDTO) {
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         // @T确定文件的粗分类,文件分类 和 文件夹查找是对立关系，如果分类，则不能根据父文件查询。
         String categoryDesc = queryInfoDTO.getCategory();
         if( categoryDesc != null && !categoryDesc.equals("all"))
@@ -140,7 +131,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             //获取一个新的fileId
             fileId = StringUtils.getSerialNumber(FILE_ID_LENGTH);
             uploadDTO.setFileId(fileId);
-            redisUtilsForString.setex(REDIS_TEMP_SIZE_PREFIX+userId+":"+fileId,"0",REDIS_TEMP_EXPIRE_TIME);
+            redisManager.setex(RedisUtils.getTempSizeKey(userId, fileId), "0", REDIS_TEMP_EXPIRE_TIME);
             //根据md5值查找数据库中是否含有相同的转码成功的文件
             FileInfo fileInfo = fileInfoMapper.selectOneByFileMd5(uploadDTO.getFileMd5());
             if(fileInfo != null && fileInfo.getStatus() ==  TRANS_SUCCEED.getStatus())
@@ -154,7 +145,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
     }
     //执行秒传，上传时有现存文件
     private UploadVO uploadBySecond(UploadDTO uploadDTO, String userId, FileInfo fileInfo) throws Exception {
-        RedisUseSpaceDTO redisUseSpaceDTO = redisUtilsForUserSpace.get(REDIS_USER_SPACE_PREFIX + userId);
+        RedisUseSpaceDTO redisUseSpaceDTO = redisManager.get(RedisUtils.getUserSpaceKey(userId), RedisUseSpaceDTO.class);
         Long useSpace = redisUseSpaceDTO.getUseSpace();
         Long totalSpace = redisUseSpaceDTO.getTotalSpace();
         String fileId = uploadDTO.getFileId();
@@ -197,13 +188,13 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
         if(uploadDTO.getChunks()>MAX_CHUNK_SIZE)
             throw new MyException("文件过大",ERROR_RES_CODE);
         String fileId = uploadDTO.getFileId();
-        String tempSizeKey = REDIS_TEMP_SIZE_PREFIX + userId + ":" + fileId;
+        String tempSizeKey = RedisUtils.getTempSizeKey(userId, fileId);
         //获取用户空间信息和文件临时大小信息，校验用户空间余容是否足够
-        RedisUseSpaceDTO useSpaceDTO = redisUtilsForUserSpace.get(REDIS_USER_SPACE_PREFIX +userId);
-        Long tempSize = Long.parseLong(redisUtilsForString.get(tempSizeKey));
+        RedisUseSpaceDTO useSpaceDTO = redisManager.get(RedisUtils.getUserSpaceKey(userId), RedisUseSpaceDTO.class);
+        Long tempSize = Long.parseLong(redisManager.get(tempSizeKey, String.class));
         if(tempSize+uploadDTO.getFile().getSize()+useSpaceDTO.getUseSpace()>useSpaceDTO.getTotalSpace())
         {  //空间不足，删除临时大小信息，抛出异常
-            redisUtilsForString.delete(tempSizeKey);
+            redisManager.delete(tempSizeKey);
             // 删除临时切片文件
             minioUtils.deleteFolder(FILE_TEMP_PATH+userId+"/"+fileId);
             throw new MyException("内存空间不足",NO_SPACE_RES_CODE);
@@ -211,7 +202,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
         else
         {
             //空间足够，更新文件临时大小信息
-            redisUtilsForString.setex(tempSizeKey,String.valueOf(tempSize+uploadDTO.getFile().getSize()),REDIS_TEMP_EXPIRE_TIME);
+            redisManager.setex(tempSizeKey, String.valueOf(tempSize+uploadDTO.getFile().getSize()), REDIS_TEMP_EXPIRE_TIME);
         }
         String tempFilePath = FILE_TEMP_PATH+ userId +"/"+ fileId +"/"+ uploadDTO.getChunkIndex();
         try {
@@ -247,7 +238,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             String dateStr = StringUtils.formatDate(date,YEAR_MONTH_DAY.getPattern());
             //获取文件大小信息
             String fileId = uploadDTO.getFileId();
-            String fileSizeStr = redisUtilsForString.get(REDIS_TEMP_SIZE_PREFIX+userId+":"+fileId);
+            String fileSizeStr = redisManager.get(RedisUtils.getTempSizeKey(userId, fileId), String.class);
             Long fileSize = Long.parseLong(fileSizeStr);
             String fileName = uploadDTO.getFileName();
             String filePath = FILE_ROOT_PATH+dateStr+"/"+fileId+"/"+fileName;
@@ -284,7 +275,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             throw new MyException("文件上传失败",FAIL_RES_CODE);
         }finally {
             //无论如何，删除临时文件大小信息
-            redisUtilsForString.delete(REDIS_TEMP_SIZE_PREFIX+userId+":"+uploadDTO.getFileId());
+            redisManager.delete(RedisUtils.getTempSizeKey(userId, uploadDTO.getFileId()));
         }
     }
     //合并文件(该方法中凡是MinIO路径都添加了minio前缀，其余路径均表示本地路径)
@@ -320,13 +311,13 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             {
                 //1 生成缩略图
                 String coverPath = localFolderPath+"/"+FILE_DEFAULT_COVER_NAME;
-                ffmpegUtils.createVideoCover(localMergeFilePath,coverPath);
+                FfmpegUtils.createVideoCover(localMergeFilePath,coverPath);
                 //2 将原视频转码成TS格式
                 String tsFilePath = localFolderPath+"/"+FILE_DEFAULT_TS_NAME;
-                ffmpegUtils.turnVideo2Ts(localMergeFilePath,tsFilePath);
+                FfmpegUtils.turnVideo2Ts(localMergeFilePath,tsFilePath);
                 //3 对完整TS文件进行ts切片获得ts文件和m3u8文件
                 String m3u8FilePath = localFolderPath+"/" +FILE_DEFAULT_M3U8_NAME;
-                ffmpegUtils.cutTsVedio(tsFilePath,m3u8FilePath,localFolderPath);
+                FfmpegUtils.cutTsVedio(tsFilePath,m3u8FilePath,localFolderPath);
                 //4 删除完整的ts文件
                 FileUtils.deleteFile(tsFilePath);
                 //5 将视频原文件，封面，m3u8,ts切片文件上传到MinIO
@@ -341,7 +332,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             {
                 //1 生成缩略图
                 String coverPath = localFolderPath+"/"+FILE_DEFAULT_COVER_NAME;
-                ffmpegUtils.createImageCover(localMergeFilePath,coverPath);
+                FfmpegUtils.createImageCover(localMergeFilePath,coverPath);
                 //2 保存文件到MinIO
                 File[] files = new File(localFolderPath).listFiles();
                 for(File file:files)
@@ -411,7 +402,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
                 minioUtils.getFile(tsPath,response);
             }
             else {
-            fileInfoLqw.clear();
+            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
             fileInfoLqw.eq(FileInfo::getFileId,msg);
             fileInfoLqw.eq(FileInfo::getUserId,userId);
             fileInfoLqw.eq(FileInfo::getFileType,FileTypeEnum.VIDEO.getType());//查询视频类型的
@@ -437,7 +428,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
      */
     @Override
     public void getFile(HttpServletResponse response, String fileId, String userId, HttpSession session) throws MyException {
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFileId,fileId);
         fileInfoLqw.eq(FileInfo::getUserId,userId);
         fileInfoLqw.eq(FileInfo::getDelFlag,NORMAL.getFlag());
@@ -463,7 +454,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
      */
     @Override
     public String getDownloadUrl(String fileId, String userId) throws MyException {
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFileId,fileId);
         fileInfoLqw.eq(FileInfo::getUserId,userId);
         fileInfoLqw.eq(FileInfo::getStatus,TRANS_SUCCEED.getStatus());//查询转码成功的
@@ -474,7 +465,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
         //将路径存入redis,key是临时生成的code
         String filePath = fileInfo.getFilePath();
         String downloadUrlCode = StringUtils.getSerialNumber(30);
-        redisUtilsForString.setex(REDIS_DOWNLOAD_CODE_PREFIX+downloadUrlCode,filePath,REDIS_DOWNLOAD_EXPIRE_TIME);
+        redisManager.setex(RedisUtils.getDownloadCodeKey(downloadUrlCode), filePath, REDIS_DOWNLOAD_EXPIRE_TIME);
         return downloadUrlCode;
     }
 
@@ -485,7 +476,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
      */
     @Override
     public void downloadFile(String code, HttpServletResponse response) throws MyException {
-        String filePath = redisUtilsForString.get(REDIS_DOWNLOAD_CODE_PREFIX+code);
+        String filePath = redisManager.get(RedisUtils.getDownloadCodeKey(code), String.class);
 
         try {
             minioUtils.getFile(filePath,response);

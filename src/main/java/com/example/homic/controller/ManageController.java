@@ -62,7 +62,7 @@ public class ManageController extends CommonController{
             String fileName
     )  {
         String userId = getUserIdBySession(session);
-        FileInfoVO resFileInfoVO = manageService.reNameFile(fileId,fileName,userId);
+        FileInfoVO resFileInfoVO = manageService.renameFile(fileId,fileName,userId);
         ResponseVO responseVO = resFileInfoVO != null ? new ResponseVO(SUCCESS_RES_STATUS,"重命名成功") : new ResponseVO(FAIL_RES_STATUS,"重命名失败");
         responseVO.setData(resFileInfoVO);
         return  responseVO;

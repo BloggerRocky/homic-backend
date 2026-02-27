@@ -5,14 +5,13 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.homic.exception.MyException;
 import com.example.homic.mapper.FileInfoMapper;
-import com.example.homic.model.FileInfo;
+import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.ManageService;
 import com.example.homic.utils.MinioUtils;
 import com.example.homic.utils.StringUtils;
 import com.example.homic.vo.FileInfoVO;
 import com.example.homic.vo.FolderInfoVO;
 import com.example.homic.vo.PageResultVO;
-import org.bouncycastle.crypto.DSA;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +39,6 @@ import static com.example.homic.constants.enums.FileStatusEnum.TRANS_SUCCEED;
 @Service
 public class ManageServiceImpl extends CommonServiceImpl implements ManageService {
     @Autowired
-    LambdaQueryWrapper<FileInfo> fileInfoLqw;
-    @Autowired
     FileInfoMapper fileInfoMapper;
     @Autowired
     ModelMapper modelMapper;
@@ -59,7 +56,7 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
      */
     @Override
     public FileInfoVO newFolder(String filePid, String fileName, String userId) throws MyException {
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getUserId, userId);
         fileInfoLqw.eq(FileInfo::getFilePid, filePid);
         fileInfoLqw.eq(FileInfo::getFileName, fileName);
@@ -100,9 +97,9 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
      * @return
      */
     @Override
-    public FileInfoVO reNameFile(String fileId, String fileName, String userId) {
+    public FileInfoVO renameFile(String fileId, String fileName, String userId) {
         //查询该文件的父文件夹Id（即filePid）和目录类型（folderType)
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFileId, fileId);
         fileInfoLqw.eq(FileInfo::getUserId, userId);
         try {
@@ -110,10 +107,10 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
             Integer folderType = fileInfo.getFolderType();
             String filePid = fileInfo.getFilePid();
             //查询该父文件夹下是否有相同姓名的同目录类型文件
-            fileInfoLqw.clear();
-            fileInfoLqw.eq(FileInfo::getFileName, fileName);
-            fileInfoLqw.eq(FileInfo::getFilePid, filePid);
-            if (fileInfoMapper.selectCount(fileInfoLqw) > 0)
+            LambdaQueryWrapper<FileInfo> fileInfoLqw2 = new LambdaQueryWrapper<>();
+            fileInfoLqw2.eq(FileInfo::getFileName, fileName);
+            fileInfoLqw2.eq(FileInfo::getFilePid, filePid);
+            if (fileInfoMapper.selectCount(fileInfoLqw2) > 0)
                 return null;
             //满足要求更新数据库
             fileInfo.setFileName(fileName);
@@ -137,7 +134,7 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     @Override
     public List<FolderInfoVO> getFolderInfo(String path, String shareId, String userId) {
         String[] folderIds = path.split("/");
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.in(FileInfo::getFileId, folderIds);
         fileInfoLqw.eq(FileInfo::getUserId, userId);
         fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
@@ -159,7 +156,7 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     public List<FileInfoVO> loadAllFolder(String filePid, String currentFileIds, String userId) throws MyException {
         //查询当前目录中fleId不在当前多个文件id中的目录
         String[] idArray = currentFileIds.split(",");
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFilePid, filePid);
         fileInfoLqw.eq(FileInfo::getUserId, userId);
         fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
@@ -187,19 +184,19 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     public List<FileInfoVO> changeFileFolder(String fileIds, String filePid, String userId) throws MyException {
         try {
             String[] fileIdArray = fileIds.split(",");
-            fileInfoLqw.clear();
+            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
             fileInfoLqw.in(FileInfo::getFileId, fileIdArray);
             fileInfoLqw.eq(FileInfo::getUserId, userId);
             fileInfoLqw.eq(FileInfo::getFilePid, filePid);
             if (fileInfoMapper.selectCount(fileInfoLqw) > 0)
                 throw new MyException("目标文件夹下已存在同名文件", FAIL_RES_CODE);
-            fileInfoLqw.clear();
-            fileInfoLqw.in(FileInfo::getFileId, fileIdArray);
-            fileInfoLqw.eq(FileInfo::getUserId, userId);
+            LambdaQueryWrapper<FileInfo> fileInfoLqw2 = new LambdaQueryWrapper<>();
+            fileInfoLqw2.in(FileInfo::getFileId, fileIdArray);
+            fileInfoLqw2.eq(FileInfo::getUserId, userId);
             FileInfo fileInfo = new FileInfo();
             fileInfo.setFilePid(filePid);
             fileInfo.setLastUpdateTime(new Date());
-            fileInfoMapper.update(fileInfo, fileInfoLqw);
+            fileInfoMapper.update(fileInfo, fileInfoLqw2);
             return null;
         } catch (MyException e) {
             throw new MyException("移动文件失败", FAIL_RES_CODE);
@@ -217,7 +214,7 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     public boolean deleteFile(String fileIds, String userId) throws MyException {
         //将所有待删除文件的状态改成回收站
         List<String> fileIdsList = List.of(fileIds.split(","));
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.in(FileInfo::getFileId, fileIdsList);
         fileInfoLqw.eq(FileInfo::getUserId, userId);
         fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
@@ -246,7 +243,7 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     public PageResultVO loadRecycleList(String pageNoStr, String pageSizeStr, String userId) {
         Long pageNo = pageNoStr.equals("") ? 1L : Long.parseLong(pageNoStr);
         Long pageSize = pageSizeStr.equals("") ? DEFAULT_PAGE_SIZE : Long.parseLong(pageSizeStr);
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getUserId, userId);
         fileInfoLqw.eq(FileInfo::getDelFlag, RECYCLE.getFlag());
         IPage<FileInfo> page = new Page<>(pageNo, pageSize);
@@ -267,30 +264,30 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
         String[] fileIds = ids_str.split(",");
         for (String fileId : fileIds) {
             try {
-                fileInfoLqw.clear();
+                LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
                 fileInfoLqw.eq(FileInfo::getFileId, fileId);
                 fileInfoLqw.eq(FileInfo::getUserId, userId);
                 FileInfo fileInfo = fileInfoMapper.selectOne(fileInfoLqw);
                 System.out.println(isPathValid(fileInfo.getFilePid(), userId));
                 if (isPathValid(fileInfo.getFilePid(), userId)) {
                     //如果路径有效，直接恢复为正常
-                    fileInfoLqw.clear();
-                    fileInfoLqw.eq(FileInfo::getFileId, fileId);
-                    fileInfoLqw.eq(FileInfo::getUserId, userId);
+                    LambdaQueryWrapper<FileInfo> fileInfoLqw2 = new LambdaQueryWrapper<>();
+                    fileInfoLqw2.eq(FileInfo::getFileId, fileId);
+                    fileInfoLqw2.eq(FileInfo::getUserId, userId);
                     FileInfo updateInfo = new FileInfo();
                     updateInfo.setDelFlag(NORMAL.getFlag());
-                    System.out.println(fileInfoMapper.selectOne(fileInfoLqw).getFileId());
-                    fileInfoMapper.update(updateInfo, fileInfoLqw);
+                    System.out.println(fileInfoMapper.selectOne(fileInfoLqw2).getFileId());
+                    fileInfoMapper.update(updateInfo, fileInfoLqw2);
                     System.out.println("55555");
                 } else {
                     //如果路径无效，恢复为正常放到根目录
-                    fileInfoLqw.clear();
-                    fileInfoLqw.eq(FileInfo::getFileId, fileId);
-                    fileInfoLqw.eq(FileInfo::getUserId, userId);
+                    LambdaQueryWrapper<FileInfo> fileInfoLqw3 = new LambdaQueryWrapper<>();
+                    fileInfoLqw3.eq(FileInfo::getFileId, fileId);
+                    fileInfoLqw3.eq(FileInfo::getUserId, userId);
                     FileInfo updateInfo = new FileInfo();
                     updateInfo.setDelFlag(NORMAL.getFlag());
                     updateInfo.setFilePid("0");
-                    fileInfoMapper.update(updateInfo, fileInfoLqw);
+                    fileInfoMapper.update(updateInfo, fileInfoLqw3);
                 }
             } catch (Exception e) {
                 throw new MyException("恢复文件失败", FAIL_RES_CODE);
@@ -305,7 +302,7 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
         if (filePid.equals("0"))
             return true;
         else {
-            fileInfoLqw.clear();
+            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
             fileInfoLqw.eq(FileInfo::getFileId, filePid);
             fileInfoLqw.eq(FileInfo::getUserId, userId);
             fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
@@ -340,7 +337,7 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     @Transactional
     void deleteTotalFile(List<String> fileIdsList, String userId) throws Exception {
         //获取当前文件信息
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.in(FileInfo::getFileId, fileIdsList);
         fileInfoLqw.eq(FileInfo::getUserId, userId);
         List<FileInfo> fileInfos = fileInfoMapper.selectList(fileInfoLqw);
@@ -352,20 +349,20 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
             // 【1】 对于文件，如果没有其他文件引用相同的实体文件，删除对应的实体文件
             if(info.getFolderType() == FOLDER_TYPE_FILE){
                 String md5 = info.getFileMd5();
-                fileInfoLqw.clear();
-                fileInfoLqw.eq(FileInfo::getFileMd5, md5);
+                LambdaQueryWrapper<FileInfo> fileInfoLqw2 = new LambdaQueryWrapper<>();
+                fileInfoLqw2.eq(FileInfo::getFileMd5, md5);
                 //查询相同md5值的文件数量为0，删除实体文件
-                if (fileInfoMapper.selectCount(fileInfoLqw) == 0) {
+                if (fileInfoMapper.selectCount(fileInfoLqw2) == 0) {
                     String folderPath = info.getFilePath().substring(0,info.getFilePath().lastIndexOf("/"));
                     minioUtils.deleteFolder(folderPath);
                 }
             }
             // 【2】 对于文件夹，将子文件加入待删除列表
             if (info.getFolderType() == FOLDER_TYPE_FOLDER) {   //查询该文件夹的子文件
-                fileInfoLqw.clear();
-                fileInfoLqw.eq(FileInfo::getFilePid, info.getFileId());
-                fileInfoLqw.eq(FileInfo::getUserId, userId);
-                List<FileInfo> subFileInfos = fileInfoMapper.selectList(fileInfoLqw);
+                LambdaQueryWrapper<FileInfo> fileInfoLqw3 = new LambdaQueryWrapper<>();
+                fileInfoLqw3.eq(FileInfo::getFilePid, info.getFileId());
+                fileInfoLqw3.eq(FileInfo::getUserId, userId);
+                List<FileInfo> subFileInfos = fileInfoMapper.selectList(fileInfoLqw3);
                 //将子文件id加入待删除列表
                 for (FileInfo subInfo : subFileInfos) {
                     subFileIds.add(subInfo.getFileId());

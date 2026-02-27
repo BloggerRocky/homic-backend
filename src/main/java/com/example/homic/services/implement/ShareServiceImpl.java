@@ -9,8 +9,8 @@ import com.example.homic.exception.MyException;
 import com.example.homic.mapper.FileInfoMapper;
 import com.example.homic.mapper.FileShareMapper;
 import com.example.homic.mapper.UserInfoMapper;
-import com.example.homic.model.FileInfo;
-import com.example.homic.model.FileShare;
+import com.example.homic.model.file.FileInfo;
+import com.example.homic.model.file.FileShare;
 import com.example.homic.model.UserInfo;
 import com.example.homic.services.ShareService;
 import com.example.homic.utils.StringUtils;
@@ -39,15 +39,9 @@ import static com.example.homic.constants.enums.FileStatusEnum.TRANS_SUCCEED;
 @Service
 public class ShareServiceImpl implements ShareService {
     @Autowired
-    LambdaQueryWrapper<FileInfo> fileInfoLqw;
-    @Autowired
     FileInfoMapper fileInfoMapper;
     @Autowired
     FileShareMapper fileShareMapper;
-    @Autowired
-    LambdaQueryWrapper<FileShare> fileShareLqw;
-    @Autowired
-    LambdaQueryWrapper<UserInfo> userInfoLqw;
     @Autowired
     UserInfoMapper userInfoMapper;
     @Autowired
@@ -69,7 +63,7 @@ public class ShareServiceImpl implements ShareService {
             Long pageNo = pageNoStr.equals("") ? 1L : Long.parseLong(pageNoStr);
             Long pageSize = pageSizeStr.equals("") ? DEFAULT_PAGE_SIZE : Long.parseLong(pageSizeStr);
             IPage<FileShare> page = new Page<>(pageNo,pageSize);
-            fileShareLqw.clear();
+            LambdaQueryWrapper<FileShare> fileShareLqw = new LambdaQueryWrapper<>();
             fileShareMapper.selectPage(page,fileShareLqw.eq(FileShare::getUserId,userId));
             PageResultVO<FileShare> fileSharePageResultVO = new PageResultVO<>(page, FileShare.class);
             return fileSharePageResultVO;
@@ -90,7 +84,7 @@ public class ShareServiceImpl implements ShareService {
      */
     @Override
     public FileShare shareFile(String fileId, String validType, String codeType, String code, String userId) throws MyException {
-        fileInfoLqw.clear();
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFileId,fileId);
         fileInfoLqw.eq(FileInfo::getUserId,userId);
         fileInfoLqw.eq(FileInfo::getDelFlag,NORMAL.getFlag());
@@ -143,7 +137,7 @@ public class ShareServiceImpl implements ShareService {
     @Override
     public boolean cancelShare(String shareIds, String userId) throws MyException {
         String[] ids = shareIds.split(",");
-        fileShareLqw.clear();
+        LambdaQueryWrapper<FileShare> fileShareLqw = new LambdaQueryWrapper<>();
         fileShareLqw.eq(FileShare::getUserId,userId);
         fileShareLqw.in(FileShare::getShareId,ids);
         try {
@@ -162,7 +156,7 @@ public class ShareServiceImpl implements ShareService {
      */
     @Override
     public ShareInfoVO getShareInfo(String shareId, String userId ) {
-        fileShareLqw.clear();
+        LambdaQueryWrapper<FileShare> fileShareLqw = new LambdaQueryWrapper<>();
         fileShareLqw.eq(FileShare::getShareId,shareId);
         FileShare fileShare = fileShareMapper.selectOne(fileShareLqw);
         if(fileShare == null || fileShare.getExpireTime().before(new Date()))
@@ -181,7 +175,7 @@ public class ShareServiceImpl implements ShareService {
 
     //校验分享提取码
     public ShareInfoVO checkShareCode(String shareId, String code, HttpSession session) {
-        fileShareLqw.clear();
+        LambdaQueryWrapper<FileShare> fileShareLqw = new LambdaQueryWrapper<>();
         fileShareLqw.eq(FileShare::getShareId,shareId);
         fileShareLqw.eq(FileShare::getCode,code);
         FileShare shareInfo = fileShareMapper.selectOne(fileShareLqw);
@@ -204,7 +198,7 @@ public class ShareServiceImpl implements ShareService {
     @Override
     public boolean saveShareFile(String[] shareFileIdArray, String userId, String myFolderId) {
         try {
-            fileInfoLqw.clear();
+            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
             fileInfoLqw.in(FileInfo::getFileId,shareFileIdArray);
             List<FileInfo> fileInfoList = fileInfoMapper.selectList(fileInfoLqw);
             if(fileInfoList == null || fileInfoList.size() == 0)

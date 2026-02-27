@@ -10,6 +10,7 @@ import com.example.homic.exception.MyException;
 import com.example.homic.mapper.UserInfoMapper;
 import com.example.homic.model.UserInfo;
 import com.example.homic.services.AdminService;
+import com.example.homic.config.RedisManager;
 import com.example.homic.utils.RedisUtils;
 import com.example.homic.vo.PageResultVO;
 import com.example.homic.vo.UserInfoVO;
@@ -29,11 +30,9 @@ import static com.example.homic.constants.NormalConstants.*;
 @Service
 public class AdminServiceImpl extends CommonServiceImpl implements AdminService   {
     @Autowired
-    RedisUtils<RedisSettingDTO> redisUtilsForSetting;
+    RedisManager redisManager;
     @Autowired
     UserInfoMapper userInfoMapper;
-    @Autowired
-    LambdaQueryWrapper<UserInfo> userInfoLqw;
     private static Logger logger = LoggerFactory.getLogger(AdminServiceImpl.class);
     /**
      * 获取系统设置信息
@@ -41,7 +40,7 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
      */
     @Override
     public RedisSettingDTO getSysSettings() {
-        RedisSettingDTO redisSettingDTO = redisUtilsForSetting.get(REDIS_SYSTEM_SETTING_KEY);
+        RedisSettingDTO redisSettingDTO = redisManager.get(RedisUtils.getSystemSettingKey(), RedisSettingDTO.class);
         redisSettingDTO = redisSettingDTO == null ? DEFAULT_SETTING_INFO: redisSettingDTO;
         return redisSettingDTO;
     }
@@ -57,7 +56,7 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
             return false;
         if(!settingInfo.getRegisterEmailContent().contains("%s"))
             return false;
-        return redisUtilsForSetting.set(REDIS_SYSTEM_SETTING_KEY,settingInfo);
+        return redisManager.set(RedisUtils.getSystemSettingKey(), settingInfo);
     }
 
     /**
@@ -71,7 +70,7 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
      */
     @Override
     public PageResultVO<UserInfoVO> loadUserList(String pageNoStr, String pageSizeStr, String nickNameFuzzy, String status) throws MyException {
-        userInfoLqw.clear();
+        LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
         if(nickNameFuzzy != null && !nickNameFuzzy.equals(""))
             userInfoLqw.like(UserInfo::getNickName,nickNameFuzzy);
         if(status != null && !status.equals(""))
@@ -97,7 +96,7 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
      */
     @Override
     public boolean updateUserStatus(String userId, String status) {
-        userInfoLqw.clear();
+        LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
         userInfoLqw.eq(UserInfo::getUserId,userId);
         UserInfo userInfo = new UserInfo();
         try {
@@ -112,7 +111,7 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
     @Override
     public boolean updateUserSpace(String userId, Integer space) {
         try {
-            userInfoLqw.clear();
+            LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
             userInfoLqw.eq(UserInfo::getUserId,userId);
             UserInfo userInfo = userInfoMapper.selectOne(userInfoLqw);
             Long oldUseSpace = userInfo.getUseSpace();
@@ -128,7 +127,7 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
             //将信息传入redis
             redisUseSpaceDTO.setUseSpace(oldUseSpace);
             redisUseSpaceDTO.setTotalSpace(newSpace);
-            redisUtilsForUserSpace.setex(REDIS_USER_SPACE_PREFIX+userId,redisUseSpaceDTO,REDIS_DEFAULT_EXPIRE_TIME);
+            redisManager.setex(RedisUtils.getUserSpaceKey(userId), redisUseSpaceDTO, REDIS_DEFAULT_EXPIRE_TIME);
             return true;
         } catch (Exception e) {
             logger.error("修改用户空间失败",e);

@@ -1,6 +1,7 @@
 package com.example.homic.services.implement;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.homic.config.RedisManager;
 import com.example.homic.config.properties.AppProperties;
 import com.example.homic.dto.redis.RedisEmailCodeDTO;
 import com.example.homic.dto.redis.RedisUseSpaceDTO;
@@ -45,18 +46,12 @@ public class AccountServiceImpl implements AccountService {
     private static final Logger logger = LoggerFactory.getLogger(AccountServiceImpl.class);
     @Autowired
     UserInfoMapper userInfoMapper;
-    @Autowired
-    LambdaQueryWrapper<UserInfo> userInfoLqw;
     @Resource
     JavaMailSender javaMailSender;
     @Autowired
     AppProperties appProperties;
     @Autowired
-    RedisUtils<RedisEmailCodeDTO> redisUtilsForEmailCode;
-    @Autowired
-    RedisUtils<RedisUseSpaceDTO> redisUtilsForUserSpace;
-    @Autowired
-    RedisUtils<RedisSettingDTO> redisUtilsForSetting;
+    RedisManager redisManager;
     @Autowired
     MinioUtils minioUtils;
     @Autowired
@@ -76,7 +71,7 @@ public class AccountServiceImpl implements AccountService {
         // 如果为0，表示发送注册验证码
         if(type == 0)
         {
-            RedisSettingDTO redisSettingDTO = redisUtilsForSetting.get(REDIS_SYSTEM_SETTING_KEY);
+            RedisSettingDTO redisSettingDTO = redisManager.get(RedisUtils.getSystemSettingKey(), RedisSettingDTO.class);
             redisSettingDTO = redisSettingDTO == null ? DEFAULT_SETTING_INFO : redisSettingDTO;
             title = redisSettingDTO.getRegisterEmailTitle();
             text = String.format(redisSettingDTO.getRegisterEmailContent(),code);
@@ -107,7 +102,7 @@ public class AccountServiceImpl implements AccountService {
             throw new MyException("邮箱验证码发送失败",FAIL_RES_CODE);
         }
         RedisEmailCodeDTO redisEmailCodeDTO = new RedisEmailCodeDTO(appProperties.getUsername(), email, code);
-        redisUtilsForEmailCode.setex(prefix+email, redisEmailCodeDTO,900L);
+        redisManager.setex(RedisUtils.getEmailCodeKey(prefix, email), redisEmailCodeDTO, 900L);
         return new ResponseVO(SUCCESS_RES_STATUS,"邮件发送成功，请注意查收");
     }
 
@@ -123,11 +118,11 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ResponseVO register(String email, String nickName, String password, String emailCode) {
-        RedisEmailCodeDTO codeInfo = redisUtilsForEmailCode.get(REDIS_REGIS_CODE_PREFIX+email);
+        RedisEmailCodeDTO codeInfo = redisManager.get(RedisUtils.getEmailCodeKey(REDIS_REGIS_CODE_PREFIX, email), RedisEmailCodeDTO.class);
         if(codeInfo == null || !codeInfo.getCode().equals(emailCode))
             return new ResponseVO(FAIL_RES_STATUS,"邮箱验证码错误或已过期");
         else {
-                userInfoLqw.clear();
+                LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
                 userInfoLqw.eq(UserInfo::getEmail,email).or()
                         .eq(UserInfo::getNickName,nickName);
                 if(userInfoMapper.selectOne(userInfoLqw)!=null)
@@ -148,14 +143,14 @@ public class AccountServiceImpl implements AccountService {
                     userInfo.setUserId(randomCode);
                     //初始化使用空间
                     userInfo.setUseSpace(USER_DEFAULT_USE_SPACE);
-                    RedisSettingDTO redisSettingDTO = redisUtilsForSetting.get(REDIS_SYSTEM_SETTING_KEY);
+                    RedisSettingDTO redisSettingDTO = redisManager.get(RedisUtils.getSystemSettingKey(), RedisSettingDTO.class);
                     redisSettingDTO = redisSettingDTO == null ? DEFAULT_SETTING_INFO : redisSettingDTO;
                     userInfo.setTotalSpace(redisSettingDTO.getUserInitUseSpace()*1024*1024L);
                     try {
                         //插入数据
                         userInfoMapper.insert(userInfo);
                         //删除Redis验证码缓存
-                        redisUtilsForEmailCode.delete(REDIS_REGIS_CODE_PREFIX + email);
+                        redisManager.delete(RedisUtils.getEmailCodeKey(REDIS_REGIS_CODE_PREFIX, email));
                     }catch (Exception e)
                     {
                         logger.error("数据库操作异常",e);
@@ -178,7 +173,7 @@ public class AccountServiceImpl implements AccountService {
      * @throws MyException
      */
     public SessionWebUserDTO login(String email,String password) throws MyException {
-        userInfoLqw.clear();
+        LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
         userInfoLqw.eq(UserInfo::getEmail,email);
         UserInfo userInfo = userInfoMapper.selectOne(userInfoLqw);
         if(userInfo == null || !userInfo.getPassword().equals(password))
@@ -202,7 +197,7 @@ public class AccountServiceImpl implements AccountService {
         RedisUseSpaceDTO redisUseSpaceDTO = new RedisUseSpaceDTO();
         redisUseSpaceDTO.setTotalSpace(userInfo.getTotalSpace());
         redisUseSpaceDTO.setUseSpace(userInfo.getUseSpace());
-        redisUtilsForUserSpace.setex(REDIS_USER_SPACE_PREFIX+userInfo.getUserId(), redisUseSpaceDTO,REDIS_DEFAULT_EXPIRE_TIME);
+        redisManager.setex(RedisUtils.getUserSpaceKey(userInfo.getUserId()), redisUseSpaceDTO, REDIS_DEFAULT_EXPIRE_TIME);
         return redisUseSpaceDTO;
     }
 
@@ -216,12 +211,12 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ResponseVO resetPwd(String email, String password, String emailCode) {
-        RedisEmailCodeDTO codeInfo = redisUtilsForEmailCode.get(REDIS_RESETTING_CODE_PREFIX + email);
+        RedisEmailCodeDTO codeInfo = redisManager.get(RedisUtils.getEmailCodeKey(REDIS_RESETTING_CODE_PREFIX, email), RedisEmailCodeDTO.class);
         if(codeInfo == null || !codeInfo.getCode().equals(emailCode))
             return new ResponseVO(FAIL_RES_STATUS,"邮箱验证码错误或已过期");
         UserInfo userInfo = new UserInfo();
         userInfo.setPassword(StringUtils.getMD5(password));//对原始密码进行加密
-        userInfoLqw.clear();
+        LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
         userInfoLqw.eq(UserInfo::getEmail,email);
         userInfoMapper.update(userInfo,userInfoLqw);
         return new ResponseVO(SUCCESS_RES_STATUS,"密码重置成功");
@@ -250,7 +245,7 @@ public class AccountServiceImpl implements AccountService {
      */
     @Override
     public RedisUseSpaceDTO getUseSpace(String userId) {
-        RedisUseSpaceDTO redisUseSpaceDTO = redisUtilsForUserSpace.get(REDIS_USER_SPACE_PREFIX+userId);
+        RedisUseSpaceDTO redisUseSpaceDTO = redisManager.get(RedisUtils.getUserSpaceKey(userId), RedisUseSpaceDTO.class);
         if(redisUseSpaceDTO == null)
         {
             UserInfo userInfo = getUserInfo(userId);
@@ -297,7 +292,7 @@ public class AccountServiceImpl implements AccountService {
      */
     @Override
     public ResponseVO updatePassword(String password, String userId) {
-        userInfoLqw.clear();
+        LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
         userInfoLqw.eq(UserInfo::getUserId,userId);
         UserInfo userInfo = new UserInfo();
         password = StringUtils.getMD5(password);
@@ -309,7 +304,7 @@ public class AccountServiceImpl implements AccountService {
     //通过userId获取用户信息
     public UserInfo getUserInfo(String userId)
     {
-        userInfoLqw.clear();
+        LambdaQueryWrapper<UserInfo> userInfoLqw = new LambdaQueryWrapper<>();
         userInfoLqw.eq(UserInfo::getUserId,userId);
         UserInfo userInfo = userInfoMapper.selectOne(userInfoLqw);
         return userInfo;

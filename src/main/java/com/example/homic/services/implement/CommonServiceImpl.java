@@ -1,5 +1,6 @@
 package com.example.homic.services.implement;
 
+import com.example.homic.config.RedisManager;
 import com.example.homic.dto.redis.RedisUseSpaceDTO;
 import com.example.homic.mapper.FileInfoMapper;
 import com.example.homic.mapper.UserInfoMapper;
@@ -20,7 +21,7 @@ public class CommonServiceImpl {
     @Autowired
     FileInfoMapper fileInfoMapper;
     @Autowired
-    RedisUtils<RedisUseSpaceDTO> redisUtilsForUserSpace;
+    RedisManager redisManager;
     @Autowired
     UserInfoMapper userInfoMapper;
     //刷新内存信息
@@ -29,9 +30,9 @@ public class CommonServiceImpl {
         Long useSpace = fileInfoMapper.getSizeByUserId(userId);
         useSpace = useSpace==null?0:useSpace;
         //更新redis缓存
-        RedisUseSpaceDTO redisUseSpaceDTO = redisUtilsForUserSpace.get(REDIS_USER_SPACE_PREFIX+userId);
+        RedisUseSpaceDTO redisUseSpaceDTO = redisManager.get(RedisUtils.getUserSpaceKey(userId), RedisUseSpaceDTO.class);
         redisUseSpaceDTO.setUseSpace(useSpace);
-        redisUtilsForUserSpace.setex(REDIS_USER_SPACE_PREFIX+userId,redisUseSpaceDTO,REDIS_DEFAULT_EXPIRE_TIME);
+        redisManager.setex(RedisUtils.getUserSpaceKey(userId), redisUseSpaceDTO, REDIS_DEFAULT_EXPIRE_TIME);
         //更新数据库
         UserInfo userInfo = new UserInfo();
         userInfo.setUserId(userId);

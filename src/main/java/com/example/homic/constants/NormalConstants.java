@@ -32,10 +32,10 @@ public class NormalConstants {
     /**
      * 邮箱验证码文本信息
      */
-    public static final String REGIS_TITLE = "易云注册账号邮箱验证码";
-    public static final String REGIS_CONTEXT = "您好，您用于注册易云网盘的邮箱验证码是：%s，该验证码15分钟内有效。\n若非本人操作，请忽略此邮件。";
-    public static final String RESETTING_TITLE = "易云重置密码邮箱验证码";
-    public static final String RESETTING_CONTEXT = "您好，您用于重置易云网盘账号密码的邮箱验证码是：%s，该验证码15分钟内有效。\n若非本人操作，请忽略此邮件。";
+    public static final String REGIS_TITLE = "Homic家庭云存储服务验证";
+    public static final String REGIS_CONTEXT = "您好，您用于Homic云存储服务的邮箱验证码是：%s，该验证码15分钟内有效。\n若非本人操作，请忽略此邮件。";
+    public static final String RESETTING_TITLE = "Homic重置密码邮箱验证码";
+    public static final String RESETTING_CONTEXT = "您好，您用于重置Homic账号密码的邮箱验证码是：%s，该验证码15分钟内有效。\n若非本人操作，请忽略此邮件。";
     /**
      * Redis前缀或键
      */

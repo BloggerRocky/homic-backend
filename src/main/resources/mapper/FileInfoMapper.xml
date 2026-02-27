@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.homic.mapper.FileInfoMapper">
-  <resultMap id="BaseResultMap" type="com.example.homic.model.FileInfo">
+  <resultMap id="BaseResultMap" type="com.example.homic.model.file.FileInfo">
     <id column="file_id" jdbcType="VARCHAR" property="fileId" />
     <id column="user_id" jdbcType="VARCHAR" property="userId" />
     <result column="file_md5" jdbcType="VARCHAR" property="fileMd5" />
@@ -24,7 +24,7 @@
     create_time, last_update_time, folder_type, file_category, file_type, status, recovery_time,
     del_flag
   </sql>
-  <select id="selectByPrimaryKey" parameterType="com.example.homic.model.FileInfoKey" resultMap="BaseResultMap">
+  <select id="selectByPrimaryKey" parameterType="com.example.homic.model.file.FileInfoKey" resultMap="BaseResultMap">
     select
     <include refid="Base_Column_List" />
     from file_info
@@ -46,12 +46,12 @@
     where file_md5 = #{fileMd5,jdbcType=VARCHAR}
     limit 1
   </select>
-  <delete id="deleteByPrimaryKey" parameterType="com.example.homic.model.FileInfoKey">
+  <delete id="deleteByPrimaryKey" parameterType="com.example.homic.model.file.FileInfoKey">
     delete from file_info
     where file_id = #{fileId,jdbcType=VARCHAR}
       and user_id = #{userId,jdbcType=VARCHAR}
   </delete>
-  <insert id="insert" parameterType="com.example.homic.model.FileInfo">
+  <insert id="insert" parameterType="com.example.homic.model.file.FileInfo">
     insert into file_info (file_id, user_id, file_md5,
       file_pid, file_size, file_name,
       file_cover, file_path, create_time,
@@ -65,7 +65,7 @@
       #{fileType,jdbcType=INTEGER}, #{status,jdbcType=INTEGER}, #{recoveryTime,jdbcType=TIMESTAMP},
       #{delFlag,jdbcType=INTEGER})
   </insert>
-  <insert id="insertSelective" parameterType="com.example.homic.model.FileInfo">
+  <insert id="insertSelective" parameterType="com.example.homic.model.file.FileInfo">
     insert into file_info
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="fileId != null">
@@ -168,7 +168,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.example.homic.model.FileInfo">
+  <update id="updateByPrimaryKeySelective" parameterType="com.example.homic.model.file.FileInfo">
     update file_info
     <set>
       <if test="fileMd5 != null">
@@ -217,7 +217,7 @@
     where file_id = #{fileId,jdbcType=VARCHAR}
       and user_id = #{userId,jdbcType=VARCHAR}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.example.homic.model.FileInfo">
+  <update id="updateByPrimaryKey" parameterType="com.example.homic.model.file.FileInfo">
     update file_info
     set file_md5 = #{fileMd5,jdbcType=VARCHAR},
       file_pid = #{filePid,jdbcType=VARCHAR},

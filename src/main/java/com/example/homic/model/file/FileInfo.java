@@ -1,12 +1,10 @@
-package com.example.homic.model;
+package com.example.homic.model.file;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.io.Serializable;
 import java.util.Date;
-
-import static com.example.homic.constants.enums.DatePatternEnum.YEAR_MONTH_DAY_HOUR_MINUTE_SECOND;
 
 public class FileInfo extends FileInfoKey implements Serializable {
     private String fileMd5;

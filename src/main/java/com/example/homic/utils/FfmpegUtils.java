@@ -1,10 +1,6 @@
 package com.example.homic.utils;
 
-import com.example.homic.config.properties.AppProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,13 +12,10 @@ import java.util.List;
  * 项目名：homic
  */
 //用于操作ffmpeg的工具类
-@Component("ffmpegUtils")
+@Slf4j
 public class FfmpegUtils {
-    @Autowired
-    AppProperties appProperties;
-    Logger logger = LoggerFactory.getLogger(FfmpegUtils.class);
     //制作视频封面（缩略图）
-    public void createVideoCover(String filePath, String targetPath) throws Exception {
+    public static void createVideoCover(String filePath, String targetPath) throws Exception {
         try {
             List<String> commands = new ArrayList<>();
             commands.add("ffmpeg");
@@ -37,14 +30,14 @@ public class FfmpegUtils {
             commands.add("scale='min(640,iw)':'min(480,ih)'");
             commands.add(targetPath);
             CmdExecutor.executeCommand(commands);
-        }catch (Exception e)
-        {
-            logger.error("为视频生成封面时发生错误");
+        } catch (Exception e) {
+            log.error("为视频生成封面时发生错误");
             throw e;
         }
     }
+
     //制作图片缩略图
-    public void createImageCover(String filePath, String targetPath) throws Exception {
+    public static void createImageCover(String filePath, String targetPath) throws Exception {
         try {
             List<String> commands = new ArrayList<>();
             commands.add("ffmpeg");
@@ -55,14 +48,14 @@ public class FfmpegUtils {
             commands.add("scale='min(640,iw)':'min(480,ih)'");
             commands.add(targetPath);
             CmdExecutor.executeCommand(commands);
-        }catch (Exception e)
-        {
-            logger.error("为图片生成封面时发生错误");
+        } catch (Exception e) {
+            log.error("为图片生成封面时发生错误");
             throw e;
         }
     }
+
     //将视频转码成ts格式
-    public  void turnVideo2Ts(String videoPath, String tsPath) throws IOException, InterruptedException {
+    public static void turnVideo2Ts(String videoPath, String tsPath) throws IOException, InterruptedException {
         try {
             //生成cmd命令
             List<String> commands = new ArrayList<>();
@@ -82,12 +75,13 @@ public class FfmpegUtils {
             //执行cmd命令
             CmdExecutor.executeCommand(commands);
         } catch (Exception e) {
-            logger.error("视频转码为ts文件时转码失败");
+            log.error("视频转码为ts文件时转码失败");
             throw e;
         }
     }
+
     //对TS视频进行切割
-    public  void cutTsVedio(String tsPath,String m3u8Path,String cuttingPath) throws IOException, InterruptedException {
+    public static void cutTsVedio(String tsPath, String m3u8Path, String cuttingPath) throws IOException, InterruptedException {
         try {
             //生成cmd命令
             List<String> commands = new ArrayList<>();
@@ -104,11 +98,11 @@ public class FfmpegUtils {
             commands.add(m3u8Path);//指定m3u8文件路径
             commands.add("-segment_time");
             commands.add("15");
-            commands.add(cuttingPath+"/"+"%04d.ts");
+            commands.add(cuttingPath + "/" + "%04d.ts");
             //执行cmd命令
             CmdExecutor.executeCommand(commands);
         } catch (Exception e) {
-            logger.error("视频转码为ts文件时转码失败");
+            log.error("视频转码为ts文件时转码失败");
             throw e;
         }
     }

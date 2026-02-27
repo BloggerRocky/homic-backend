@@ -4,11 +4,9 @@ import com.example.homic.annotation.GlobalInteceptor;
 import com.example.homic.dto.frontEnd.QueryInfoDTO;
 import com.example.homic.dto.session.SessionShareInfoDTO;
 import com.example.homic.exception.MyException;
-import com.example.homic.model.FileShare;
+import com.example.homic.model.file.FileShare;
 import com.example.homic.services.FileService;
 import com.example.homic.services.ShareService;
-import com.example.homic.services.implement.ManageServiceImpl;
-import com.example.homic.vo.FileInfoVO;
 import com.example.homic.vo.PageResultVO;
 import com.example.homic.vo.ResponseVO;
 import com.example.homic.vo.ShareInfoVO;
@@ -20,10 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import java.util.List;
-
 import static com.example.homic.constants.CodeConstants.*;
-import static com.example.homic.constants.NormalConstants.DEFAULT_PAGE_SIZE;
 import static com.example.homic.constants.NormalConstants.SESSION_SHARE_KEY_PREFIX;
 
 /**

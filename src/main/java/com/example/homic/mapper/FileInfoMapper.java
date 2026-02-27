@@ -1,8 +1,8 @@
 package com.example.homic.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.homic.model.FileInfo;
-import com.example.homic.model.FileInfoKey;
+import com.example.homic.model.file.FileInfo;
+import com.example.homic.model.file.FileInfoKey;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

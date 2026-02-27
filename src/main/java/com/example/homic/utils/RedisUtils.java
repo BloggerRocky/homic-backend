@@ -1,59 +1,63 @@
 package com.example.homic.utils;
 
-import org.apache.ibatis.javassist.bytecode.stackmap.BasicBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Redis 操作工具类（静态方法）
  * 作者：Rocky23318
- * 时间：2024.2024/7/12.12:14
+ * 时间：2024
  * 项目名：homic
  */
-//Redis操作工具类
-@Component("redisUtils")//<V>是用于处理包装类的泛型，在映入RedisUtils要进行声明
-public class RedisUtils<V> {
-    @Resource
-    private RedisTemplate<String,V> redisTemplate;
-    private static final Logger logger = (Logger) LoggerFactory.getLogger(RedisUtils.class);
-    //获取一个值
-    public V get(String key)
-    {
-        return key == null?null:redisTemplate.opsForValue().get(key);
-    }
-    //设置一个KV键值对
-    public boolean set(String key,V value)
-    {
-        try {
-            redisTemplate.opsForValue().set(key, value);
-        }catch(Exception e)
-        {
-            logger.error("设置Redis键值对{}：{}失败",key,value);
-            return false;
+public class RedisUtils {
+    private static final Logger logger = LoggerFactory.getLogger(RedisUtils.class);
+
+    /**
+     * 生成 Redis key 前缀
+     */
+    public static String buildKey(String prefix, String... params) {
+        StringBuilder key = new StringBuilder(prefix);
+        for (String param : params) {
+            key.append(":").append(param);
         }
-        return true;
+        return key.toString();
     }
-    //设置一个含过期时间的KV键值对
-    public boolean setex(String key,V value,long time)
-    {
-        try {
-            if (time > 0)
-                redisTemplate.opsForValue().set(key,value,time, TimeUnit.SECONDS);
-            else
-                set(key,value);
-        }catch(Exception e)
-        {
-            logger.error("设置Redis有效时长为{}s的键值对{}：{}失败,",time,key,value);
-            return false;
-        }
-        return true;
+
+    /**
+     * 生成用户空间 key
+     */
+    public static String getUserSpaceKey(String userId) {
+        return buildKey("user:space", userId);
     }
-    public  boolean delete(String key)
-    {
-        return redisTemplate.delete(key);
+
+    /**
+     * 生成邮箱验证码 key
+     */
+    public static String getEmailCodeKey(String prefix, String email) {
+        return buildKey(prefix, email);
+    }
+
+    /**
+     * 生成临时文件大小 key
+     */
+    public static String getTempSizeKey(String userId, String fileId) {
+        return buildKey("temp:size", userId, fileId);
+    }
+
+    /**
+     * 生成下载码 key
+     */
+    public static String getDownloadCodeKey(String code) {
+        return buildKey("download:code", code);
+    }
+
+    /**
+     * 生成系统设置 key
+     */
+    public static String getSystemSettingKey() {
+        return "system:setting";
     }
 }
+

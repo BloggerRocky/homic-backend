@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.homic.mapper.FileShareMapper">
-  <resultMap id="BaseResultMap" type="com.example.homic.model.FileShare">
+  <resultMap id="BaseResultMap" type="com.example.homic.model.file.FileShare">
     <id column="share_id" jdbcType="VARCHAR" property="shareId" />
     <result column="file_id" jdbcType="VARCHAR" property="fileId" />
     <result column="user_id" jdbcType="VARCHAR" property="userId" />
@@ -30,7 +30,7 @@
     delete from file_share
     where share_id = #{shareId,jdbcType=VARCHAR}
   </delete>
-  <insert id="insert" parameterType="com.example.homic.model.FileShare">
+  <insert id="insert" parameterType="com.example.homic.model.file.FileShare">
     insert into file_share (share_id, file_id, user_id,
       valid_type, expire_time, code,
       show_count, share_time, file_name,
@@ -42,7 +42,7 @@
       #{folderType,jdbcType=INTEGER}, #{fileCategory,jdbcType=INTEGER}, #{fileType,jdbcType=INTEGER},
       #{fileCover,jdbcType=VARCHAR})
   </insert>
-  <insert id="insertSelective" parameterType="com.example.homic.model.FileShare">
+  <insert id="insertSelective" parameterType="com.example.homic.model.file.FileShare">
     insert into file_share
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="shareId != null">
@@ -127,7 +127,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.example.homic.model.FileShare">
+  <update id="updateByPrimaryKeySelective" parameterType="com.example.homic.model.file.FileShare">
     update file_share
     <set>
       <if test="fileId != null">
@@ -169,7 +169,7 @@
     </set>
     where share_id = #{shareId,jdbcType=VARCHAR}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.example.homic.model.FileShare">
+  <update id="updateByPrimaryKey" parameterType="com.example.homic.model.file.FileShare">
     update file_share
     set file_id = #{fileId,jdbcType=VARCHAR},
       user_id = #{userId,jdbcType=VARCHAR},

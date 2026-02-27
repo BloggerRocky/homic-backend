@@ -1,7 +1,7 @@
 package com.example.homic.services;
 
 import com.example.homic.exception.MyException;
-import com.example.homic.model.FileShare;
+import com.example.homic.model.file.FileShare;
 import com.example.homic.vo.PageResultVO;
 import com.example.homic.vo.ShareInfoVO;
 import org.springframework.stereotype.Service;
