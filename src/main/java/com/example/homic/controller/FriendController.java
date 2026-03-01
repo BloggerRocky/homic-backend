@@ -31,6 +31,7 @@ public class FriendController {
 
     /**
      * 生成好友码
+     *
      * @param session HTTP会话
      * @return 包含好友码的响应
      * @throws MyException
@@ -43,6 +44,7 @@ public class FriendController {
 
     /**
      * 通过好友码查询用户信息
+     *
      * @param friendCode 好友码
      * @return 用户简化信息（仅包含id、昵称、头像）
      * @throws MyException
@@ -60,6 +62,7 @@ public class FriendController {
 
     /**
      * 查询自身好友码
+     *
      * @param session HTTP会话
      * @return 包含好友码的响应
      * @throws MyException
@@ -68,5 +71,44 @@ public class FriendController {
     @GlobalInteceptor(checkLogin = true)
     public ResponseVO getMyFriendCode(HttpSession session) throws MyException {
         return friendService.getMyFriendCode();
+    }
+
+    /**
+     * 发送好友申请
+     *
+     * @param session HTTP会话
+     * @param friendId 被申请者的用户ID
+     * @return 响应
+     * @throws MyException
+     */
+    @RequestMapping("/sendFriendRequest")
+    @GlobalInteceptor(checkLogin = true, checkParams = true)
+    public ResponseVO sendFriendRequest(
+            HttpSession session,
+            @VerifyParam(required = true)
+            String friendId) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.sendFriendRequest(userInfo.getUserId(), friendId);
+    }
+
+    /**
+     * 查询好友申请状态
+     *
+     * @param session HTTP会话
+     * @param friendId 被申请者的用户ID
+     * @return 申请状态 (0-未申请, 1-已申请, 2-已接受, 3-已拒绝)
+     * @throws MyException
+     */
+    @RequestMapping("/getFriendRequestStatus")
+    @GlobalInteceptor(checkLogin = true, checkParams = true)
+    public ResponseVO getFriendRequestStatus(
+            HttpSession session,
+            @VerifyParam(required = true)
+            String friendId) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        Integer status = friendService.getFriendRequestStatus(userInfo.getUserId(), friendId);
+        ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "查询成功");
+        responseVO.setData(status);
+        return responseVO;
     }
 }

@@ -33,4 +33,22 @@ public interface FriendService {
      * @throws MyException
      */
     ResponseVO getMyFriendCode() throws MyException;
+
+    /**
+     * 发送好友申请
+     * @param userId 当前用户ID
+     * @param friendId 被申请者的用户ID
+     * @return 响应
+     * @throws MyException
+     */
+    ResponseVO sendFriendRequest(String userId, String friendId) throws MyException;
+
+    /**
+     * 查询好友申请状态
+     * @param userId 当前用户ID
+     * @param friendId 被申请者的用户ID
+     * @return 申请状态 (0-未申请, 1-已申请, 2-已接受, 3-已拒绝)
+     * @throws MyException
+     */
+    Integer getFriendRequestStatus(String userId, String friendId) throws MyException;
 }

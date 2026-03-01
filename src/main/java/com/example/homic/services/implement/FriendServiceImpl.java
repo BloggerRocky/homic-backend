@@ -4,7 +4,11 @@ import com.example.homic.config.RedisManager;
 import com.example.homic.constants.NormalConstants;
 import com.example.homic.dto.session.SessionWebUserDTO;
 import com.example.homic.exception.MyException;
+import com.example.homic.mapper.FriendRelationMapper;
+import com.example.homic.mapper.FriendRequestMapper;
 import com.example.homic.mapper.UserInfoMapper;
+import com.example.homic.model.FriendRelation;
+import com.example.homic.model.FriendRequest;
 import com.example.homic.model.UserInfo;
 import com.example.homic.services.FriendService;
 import com.example.homic.utils.RedisUtils;
@@ -20,6 +24,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpSession;
+import java.util.Date;
+import java.util.UUID;
 
 import static com.example.homic.constants.CodeConstants.*;
 
@@ -39,6 +45,12 @@ public class FriendServiceImpl implements FriendService {
 
     @Autowired
     private RedisManager redisManager;
+
+    @Autowired
+    private FriendRequestMapper friendRequestMapper;
+
+    @Autowired
+    private FriendRelationMapper friendRelationMapper;
 
     // 好友码长度
     private static final int FRIEND_CODE_LENGTH = 16;
@@ -173,7 +185,7 @@ public class FriendServiceImpl implements FriendService {
                 // 获取好友码的剩余过期时间
                 String redisKey = RedisUtils.buildKey("friend:code", existingCode);
                 Long expiryTime = redisManager.getExpire(redisKey);
-                
+
                 // 获取重新生成的冷却时间
                 String cooldownKey = RedisUtils.buildKey("friend:code:cooldown", userId);
                 Long regenerateCooldown = 0L;
@@ -281,5 +293,116 @@ public class FriendServiceImpl implements FriendService {
             result.append(characters.charAt(random.nextInt(characters.length())));
         }
         return result.toString();
+    }
+
+    /**
+     * 发送好友申请
+     *
+     * @param userId 当前用户ID
+     * @param friendId 被申请者的用户ID
+     * @return 响应
+     * @throws MyException
+     */
+    @Override
+    public ResponseVO sendFriendRequest(String userId, String friendId) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 验证被申请者是否存在
+            UserInfo targetUser = userInfoMapper.selectByPrimaryKey(friendId);
+            if (targetUser == null) {
+                throw new MyException("用户不存在", FAIL_RES_CODE);
+            }
+
+            // 不能给自己发送好友申请
+            if (userId.equals(friendId)) {
+                throw new MyException("不能给自己发送好友申请", FAIL_RES_CODE);
+            }
+
+            // 检查是否已经是好友
+            FriendRelation existingRelation = friendRelationMapper.selectRelation(userId, friendId);
+            if (existingRelation != null && existingRelation.getStatus() == 1) {
+                throw new MyException("你们已经是好友了", FAIL_RES_CODE);
+            }
+
+            // 检查是否已有申请记录
+            FriendRequest existingRequest = friendRequestMapper.selectRequest(userId, friendId);
+            if (existingRequest != null && existingRequest.getStatus() == 0) {
+                throw new MyException("已经发送过申请，请等待对方处理", FAIL_RES_CODE);
+            }
+
+            // 创建新的好友申请
+            FriendRequest friendRequest = new FriendRequest();
+            friendRequest.setRequestId(UUID.randomUUID().toString());
+            friendRequest.setUserId(userId);
+            friendRequest.setFriendId(friendId);
+            friendRequest.setStatus(0); // 0-已申请
+            friendRequest.setMessage("");
+            friendRequest.setCreateTime(new Date());
+            friendRequest.setUpdateTime(new Date());
+
+            friendRequestMapper.insert(friendRequest);
+
+            logger.info("用户 {} 向用户 {} 发送了好友申请", userId, friendId);
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo("好友申请已发送");
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("发送好友申请失败", e);
+            throw new MyException("发送好友申请失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 查询好友申请状态
+     *
+     * @param userId 当前用户ID
+     * @param friendId 被申请者的用户ID
+     * @return 申请状态 (0-未申请, 1-已申请, 2-已接受, 3-已拒绝)
+     * @throws MyException
+     */
+    @Override
+    public Integer getFriendRequestStatus(String userId, String friendId) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 检查是否已经是好友
+            FriendRelation existingRelation = friendRelationMapper.selectRelation(userId, friendId);
+            if (existingRelation != null && existingRelation.getStatus() == 1) {
+                return 2; // 已接受（已是好友）
+            }
+
+            // 查询申请记录
+            FriendRequest friendRequest = friendRequestMapper.selectRequest(userId, friendId);
+            if (friendRequest == null) {
+                return 0; // 未申请
+            }
+
+            // 根据申请状态返回
+            if (friendRequest.getStatus() == 0) {
+                return 1; // 已申请（待处理）
+            } else if (friendRequest.getStatus() == 1) {
+                return 2; // 已接受
+            } else if (friendRequest.getStatus() == 2) {
+                return 3; // 已拒绝
+            }
+
+            return 0; // 默认未申请
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("查询好友申请状态失败", e);
+            throw new MyException("查询申请状态失败", FAIL_RES_CODE);
+        }
     }
 }
