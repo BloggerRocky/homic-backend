@@ -59,5 +59,26 @@ public class RedisUtils {
     public static String getSystemSettingKey() {
         return "system:setting";
     }
+
+    /**
+     * 生成好友码 key
+     */
+    public static String getFriendCodeKey(String friendCode) {
+        return buildKey("friend:code", friendCode);
+    }
+
+    /**
+     * 生成用户好友码映射 key
+     */
+    public static String getUserFriendCodeKey(String userId) {
+        return buildKey("user:friend:code", userId);
+    }
+
+    /**
+     * 生成好友码生成冷却 key
+     */
+    public static String getFriendCodeCooldownKey(String userId) {
+        return buildKey("friend:code:cooldown", userId);
+    }
 }
 

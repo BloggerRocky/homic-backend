@@ -90,4 +90,18 @@ public class RedisManager {
             return false;
         }
     }
+
+    /**
+     * 获取键的剩余过期时间（秒）
+     * @param key Redis键
+     * @return 剩余过期时间（秒），-1表示键不存在或没有设置过期时间，-2表示键不存在
+     */
+    public Long getExpire(String key) {
+        try {
+            return redisTemplate.getExpire(key, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            logger.error("获取Redis键过期时间失败: {}", key, e);
+            return -1L;
+        }
+    }
 }
