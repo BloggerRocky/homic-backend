@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.homic.mapper.FriendFileShareMapper">
+
+    <resultMap id="FriendShareVOMap" type="com.example.homic.vo.FriendShareVO">
+        <id column="share_id" property="shareId"/>
+        <result column="from_user_id" property="fromUserId"/>
+        <result column="from_user_nick_name" property="fromUserNickName"/>
+        <result column="to_user_id" property="toUserId"/>
+        <result column="to_user_nick_name" property="toUserNickName"/>
+        <result column="file_id" property="fileId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="folder_type" property="folderType"/>
+        <result column="file_type" property="fileType"/>
+        <result column="file_category" property="fileCategory"/>
+        <result column="file_cover" property="fileCover"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="valid_type" property="validType"/>
+        <result column="expire_time" property="expireTime"/>
+        <result column="share_time" property="shareTime"/>
+        <result column="status" property="status"/>
+        <result column="is_sender" property="isSender"/>
+    </resultMap>
+
+    <!-- 查询用户与好友之间的分享记录 -->
+    <select id="selectShareHistory" resultMap="FriendShareVOMap">
+        SELECT 
+            s.share_id,
+            s.from_user_id,
+            u1.nick_name as from_user_nick_name,
+            s.to_user_id,
+            u2.nick_name as to_user_nick_name,
+            s.file_id,
+            s.file_name,
+            s.folder_type,
+            s.file_type,
+            s.file_category,
+            s.file_cover,
+            s.file_size,
+            s.valid_type,
+            s.expire_time,
+            s.share_time,
+            s.status,
+            CASE WHEN s.from_user_id = #{userId} THEN 1 ELSE 0 END as is_sender
+        FROM friend_file_share s
+        LEFT JOIN user_info u1 ON s.from_user_id = u1.user_id
+        LEFT JOIN user_info u2 ON s.to_user_id = u2.user_id
+        WHERE (s.from_user_id = #{userId} AND s.to_user_id = #{friendId})
+           OR (s.from_user_id = #{friendId} AND s.to_user_id = #{userId})
+        ORDER BY s.share_time ASC
+    </select>
+
+    <!-- 查询用户发送的分享记录 -->
+    <select id="selectSentShares" resultMap="FriendShareVOMap">
+        SELECT 
+            s.share_id,
+            s.from_user_id,
+            u1.nick_name as from_user_nick_name,
+            s.to_user_id,
+            u2.nick_name as to_user_nick_name,
+            s.file_id,
+            s.file_name,
+            s.folder_type,
+            s.file_type,
+            s.file_category,
+            s.file_cover,
+            s.file_size,
+            s.valid_type,
+            s.expire_time,
+            s.share_time,
+            s.status,
+            1 as is_sender
+        FROM friend_file_share s
+        LEFT JOIN user_info u1 ON s.from_user_id = u1.user_id
+        LEFT JOIN user_info u2 ON s.to_user_id = u2.user_id
+        WHERE s.from_user_id = #{userId}
+        ORDER BY s.share_time DESC
+    </select>
+
+    <!-- 查询用户接收的分享记录 -->
+    <select id="selectReceivedShares" resultMap="FriendShareVOMap">
+        SELECT 
+            s.share_id,
+            s.from_user_id,
+            u1.nick_name as from_user_nick_name,
+            s.to_user_id,
+            u2.nick_name as to_user_nick_name,
+            s.file_id,
+            s.file_name,
+            s.folder_type,
+            s.file_type,
+            s.file_category,
+            s.file_cover,
+            s.file_size,
+            s.valid_type,
+            s.expire_time,
+            s.share_time,
+            s.status,
+            0 as is_sender
+        FROM friend_file_share s
+        LEFT JOIN user_info u1 ON s.from_user_id = u1.user_id
+        LEFT JOIN user_info u2 ON s.to_user_id = u2.user_id
+        WHERE s.to_user_id = #{userId}
+        ORDER BY s.share_time DESC
+    </select>
+
+</mapper>

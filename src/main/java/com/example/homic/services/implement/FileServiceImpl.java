@@ -477,10 +477,10 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
     @Override
     public void downloadFile(String code, HttpServletResponse response) throws MyException {
         String filePath = redisManager.get(RedisUtils.getDownloadCodeKey(code), String.class);
-
         try {
             minioUtils.getFile(filePath,response);
         } catch (Exception e) {
+            logger.error(e.getMessage(),e);
             throw new MyException("下载文件失败",FAIL_RES_CODE);
         }
     }

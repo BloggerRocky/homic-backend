@@ -1,5 +1,6 @@
 package com.example.homic.services.implement;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.homic.config.RedisManager;
 import com.example.homic.constants.NormalConstants;
 import com.example.homic.dto.session.SessionWebUserDTO;
@@ -7,11 +8,13 @@ import com.example.homic.exception.MyException;
 import com.example.homic.mapper.FriendRelationMapper;
 import com.example.homic.mapper.FriendRequestMapper;
 import com.example.homic.mapper.UserInfoMapper;
+import com.example.homic.model.FriendFileShare;
 import com.example.homic.model.FriendRelation;
 import com.example.homic.model.FriendRequest;
 import com.example.homic.model.UserInfo;
 import com.example.homic.services.FriendService;
 import com.example.homic.utils.RedisUtils;
+import com.example.homic.utils.StringUtils;
 import com.example.homic.vo.FriendCodeVO;
 import com.example.homic.vo.FriendInfoVO;
 import com.example.homic.vo.FriendRequestVO;

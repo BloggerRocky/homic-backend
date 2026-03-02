@@ -236,4 +236,13 @@
     where file_id = #{fileId,jdbcType=VARCHAR}
       and user_id = #{userId,jdbcType=VARCHAR}
   </update>
+
+  <!-- 根据文件ID和用户ID查询文件 -->
+  <select id="selectByFileIdAndUserId" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from file_info
+    where file_id = #{fileId,jdbcType=VARCHAR}
+      and user_id = #{userId,jdbcType=VARCHAR}
+  </select>
 </mapper>

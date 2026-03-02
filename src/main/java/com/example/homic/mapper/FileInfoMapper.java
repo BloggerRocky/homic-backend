@@ -22,4 +22,6 @@ public interface FileInfoMapper  extends BaseMapper<FileInfo> {
     Long getSizeByUserId(String userId);
     //获取文件的子文件
     String[] getSubFileById(String[] fileIds);
+    //根据文件ID和用户ID查询文件
+    FileInfo selectByFileIdAndUserId(String fileId, String userId);
 }
