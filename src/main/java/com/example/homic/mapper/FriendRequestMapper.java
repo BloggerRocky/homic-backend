@@ -26,9 +26,9 @@ public interface FriendRequestMapper extends BaseMapper<FriendRequest> {
     List<FriendRequest> selectSentRequests(String userId);
 
     /**
-     * 查询两个用户之间的申请记录
+     * 查询两个用户之间的最近一条申请记录
      */
-    @Select("SELECT * FROM friend_request WHERE user_id = #{userId} AND friend_id = #{friendId}")
+    @Select("SELECT * FROM friend_request WHERE user_id = #{userId} AND friend_id = #{friendId} ORDER BY create_time DESC LIMIT 1")
     FriendRequest selectRequest(String userId, String friendId);
 
     /**

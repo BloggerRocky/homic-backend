@@ -46,4 +46,10 @@ public interface FriendRelationMapper extends BaseMapper<FriendRelation> {
             "AND (ui.nick_name LIKE CONCAT('%', #{keyword}, '%') OR fr.remark LIKE CONCAT('%', #{keyword}, '%')) " +
             "ORDER BY fr.update_time DESC")
     List<FriendRelation> searchFriends(String userId, String keyword);
+
+    /**
+     * 查询特别关注的好友
+     */
+    @Select("SELECT * FROM friend_relation WHERE user_id = #{userId} AND status = 1 AND is_special = 1 ORDER BY update_time DESC")
+    List<FriendRelation> selectSpecialFriends(String userId);
 }

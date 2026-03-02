@@ -13,18 +13,22 @@ import com.example.homic.model.UserInfo;
 import com.example.homic.services.FriendService;
 import com.example.homic.utils.RedisUtils;
 import com.example.homic.vo.FriendCodeVO;
+import com.example.homic.vo.FriendInfoVO;
+import com.example.homic.vo.FriendRequestVO;
 import com.example.homic.vo.ResponseVO;
 import com.example.homic.vo.UserSimpleInfoVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpSession;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import static com.example.homic.constants.CodeConstants.*;
@@ -331,12 +335,14 @@ public class FriendServiceImpl implements FriendService {
             // 检查是否已有申请记录
             FriendRequest existingRequest = friendRequestMapper.selectRequest(userId, friendId);
             if (existingRequest != null && existingRequest.getStatus() == 0) {
+                // 待处理状态，不允许重复申请
                 throw new MyException("已经发送过申请，请等待对方处理", FAIL_RES_CODE);
             }
+            // 如果状态是已拒绝(2)或已接受(1)，允许创建新的申请记录
 
             // 创建新的好友申请
             FriendRequest friendRequest = new FriendRequest();
-            friendRequest.setRequestId(UUID.randomUUID().toString());
+            // requestId由MyBatis-Plus自动生成（使用雪花算法）
             friendRequest.setUserId(userId);
             friendRequest.setFriendId(friendId);
             friendRequest.setStatus(0); // 0-已申请
@@ -403,6 +409,437 @@ public class FriendServiceImpl implements FriendService {
         } catch (Exception e) {
             logger.error("查询好友申请状态失败", e);
             throw new MyException("查询申请状态失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 获取我发出的好友申请列表
+     *
+     * @param userId 当前用户ID
+     * @return 好友申请列表
+     * @throws MyException
+     */
+    @Override
+    public ResponseVO getSentRequests(String userId) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 查询我发出的所有申请
+            List<FriendRequest> requests = friendRequestMapper.selectAllSentRequests(userId);
+
+            // 转换为VO对象，包含对方的个人信息
+            List<FriendRequestVO> requestVOList = new java.util.ArrayList<>();
+            for (FriendRequest request : requests) {
+                FriendRequestVO vo = new FriendRequestVO();
+                vo.setId(request.getRequestId());
+                vo.setSenderId(request.getUserId());
+                vo.setReceiverId(request.getFriendId());
+                vo.setStatus(request.getStatus());
+                vo.setMessage(request.getMessage());
+                vo.setCreateTime(request.getCreateTime());
+                vo.setUpdateTime(request.getUpdateTime());
+
+                // 查询发送者信息（当前用户）
+                UserInfo senderInfo = userInfoMapper.selectByPrimaryKey(request.getUserId());
+                if (senderInfo != null) {
+                    vo.setSenderNickName(senderInfo.getNickName());
+                    vo.setSenderAvatar(senderInfo.getUserAvatar());
+                }
+
+                // 查询接收者信息
+                UserInfo receiverInfo = userInfoMapper.selectByPrimaryKey(request.getFriendId());
+                if (receiverInfo != null) {
+                    vo.setReceiverNickName(receiverInfo.getNickName());
+                    vo.setReceiverAvatar(receiverInfo.getUserAvatar());
+                }
+
+                requestVOList.add(vo);
+            }
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo("查询成功");
+            responseVO.setData(requestVOList);
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("获取发出的好友申请列表失败", e);
+            throw new MyException("获取申请列表失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 获取我收到的好友申请列表
+     *
+     * @param userId 当前用户ID
+     * @return 好友申请列表
+     * @throws MyException
+     */
+    @Override
+    public ResponseVO getReceivedRequests(String userId) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 查询我收到的所有申请
+            List<FriendRequest> requests = friendRequestMapper.selectAllReceivedRequests(userId);
+
+            // 转换为VO对象，包含对方的个人信息
+            List<FriendRequestVO> requestVOList = new java.util.ArrayList<>();
+            for (FriendRequest request : requests) {
+                FriendRequestVO vo = new FriendRequestVO();
+                vo.setId(request.getRequestId());
+                vo.setSenderId(request.getUserId());
+                vo.setReceiverId(request.getFriendId());
+                vo.setStatus(request.getStatus());
+                vo.setMessage(request.getMessage());
+                vo.setCreateTime(request.getCreateTime());
+                vo.setUpdateTime(request.getUpdateTime());
+
+                // 查询发送者信息
+                UserInfo senderInfo = userInfoMapper.selectByPrimaryKey(request.getUserId());
+                if (senderInfo != null) {
+                    vo.setSenderNickName(senderInfo.getNickName());
+                    vo.setSenderAvatar(senderInfo.getUserAvatar());
+                }
+
+                // 查询接收者信息（当前用户）
+                UserInfo receiverInfo = userInfoMapper.selectByPrimaryKey(request.getFriendId());
+                if (receiverInfo != null) {
+                    vo.setReceiverNickName(receiverInfo.getNickName());
+                    vo.setReceiverAvatar(receiverInfo.getUserAvatar());
+                }
+
+                requestVOList.add(vo);
+            }
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo("查询成功");
+            responseVO.setData(requestVOList);
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("获取收到的好友申请列表失败", e);
+            throw new MyException("获取申请列表失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 处理好友申请
+     *
+     * @param userId 当前用户ID
+     * @param requestId 申请ID
+     * @param action 操作 (1-接受, 2-拒绝)
+     * @return 响应
+     * @throws MyException
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ResponseVO handleFriendRequest(String userId, Long requestId, Integer action) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 验证操作类型
+            if (action != 1 && action != 2) {
+                throw new MyException("无效的操作类型", FAIL_RES_CODE);
+            }
+
+            // 查询申请记录
+            FriendRequest friendRequest = friendRequestMapper.selectById(requestId);
+            if (friendRequest == null) {
+                throw new MyException("申请记录不存在", FAIL_RES_CODE);
+            }
+
+            // 验证当前用户是否为接收者
+            if (!userId.equals(friendRequest.getFriendId())) {
+                throw new MyException("无权处理此申请", FAIL_RES_CODE);
+            }
+
+            // 验证申请状态
+            if (friendRequest.getStatus() != 0) {
+                throw new MyException("申请已被处理", FAIL_RES_CODE);
+            }
+
+            // 更新申请状态
+            friendRequest.setStatus(action);
+            friendRequest.setUpdateTime(new Date());
+            friendRequestMapper.updateById(friendRequest);
+
+            // 如果接受申请，创建好友关系
+            if (action == 1) {
+                // 创建双向好友关系
+                FriendRelation relation1 = new FriendRelation();
+                // relationId由MyBatis-Plus自动生成（使用雪花算法）
+                relation1.setUserId(friendRequest.getUserId());
+                relation1.setFriendId(friendRequest.getFriendId());
+                relation1.setStatus(1); // 1-正常
+                relation1.setCreateTime(new Date());
+                relation1.setUpdateTime(new Date());
+                friendRelationMapper.insert(relation1);
+
+                FriendRelation relation2 = new FriendRelation();
+                // relationId由MyBatis-Plus自动生成（使用雪花算法）
+                relation2.setUserId(friendRequest.getFriendId());
+                relation2.setFriendId(friendRequest.getUserId());
+                relation2.setStatus(1); // 1-正常
+                relation2.setCreateTime(new Date());
+                relation2.setUpdateTime(new Date());
+                friendRelationMapper.insert(relation2);
+
+                logger.info("用户 {} 接受了用户 {} 的好友申请", userId, friendRequest.getUserId());
+            } else {
+                logger.info("用户 {} 拒绝了用户 {} 的好友申请", userId, friendRequest.getUserId());
+            }
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo(action == 1 ? "已接受好友申请" : "已拒绝好友申请");
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("处理好友申请失败", e);
+            throw new MyException("处理申请失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 获取我的好友列表
+     *
+     * @param userId 当前用户ID
+     * @return 好友列表
+     * @throws MyException
+     */
+    @Override
+    public ResponseVO getMyFriends(String userId) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 查询所有好友关系
+            List<FriendRelation> relations = friendRelationMapper.selectFriendsByUserId(userId);
+
+            // 转换为VO对象，包含好友的个人信息
+            List<FriendInfoVO> friendList = new java.util.ArrayList<>();
+            for (FriendRelation relation : relations) {
+                FriendInfoVO vo = new FriendInfoVO();
+                vo.setRelationId(relation.getRelationId());
+                vo.setFriendId(relation.getFriendId());
+                vo.setRemark(relation.getRemark());
+                vo.setIsSpecial(relation.getIsSpecial() != null ? relation.getIsSpecial() : 0);
+
+                // 查询好友信息
+                UserInfo friendInfo = userInfoMapper.selectByPrimaryKey(relation.getFriendId());
+                if (friendInfo != null) {
+                    vo.setNickName(friendInfo.getNickName());
+                    vo.setAvatar(friendInfo.getUserAvatar());
+                }
+
+                friendList.add(vo);
+            }
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo("查询成功");
+            responseVO.setData(friendList);
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("获取好友列表失败", e);
+            throw new MyException("获取好友列表失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 获取特别关注的好友列表
+     *
+     * @param userId 当前用户ID
+     * @return 好友列表
+     * @throws MyException
+     */
+    @Override
+    public ResponseVO getSpecialFriends(String userId) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 查询特别关注的好友
+            List<FriendRelation> relations = friendRelationMapper.selectSpecialFriends(userId);
+
+            // 转换为VO对象，包含好友的个人信息
+            List<FriendInfoVO> friendList = new java.util.ArrayList<>();
+            for (FriendRelation relation : relations) {
+                FriendInfoVO vo = new FriendInfoVO();
+                vo.setRelationId(relation.getRelationId());
+                vo.setFriendId(relation.getFriendId());
+                vo.setRemark(relation.getRemark());
+                vo.setIsSpecial(relation.getIsSpecial() != null ? relation.getIsSpecial() : 0);
+
+                // 查询好友信息
+                UserInfo friendInfo = userInfoMapper.selectByPrimaryKey(relation.getFriendId());
+                if (friendInfo != null) {
+                    vo.setNickName(friendInfo.getNickName());
+                    vo.setAvatar(friendInfo.getUserAvatar());
+                }
+
+                friendList.add(vo);
+            }
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo("查询成功");
+            responseVO.setData(friendList);
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("获取特别关注列表失败", e);
+            throw new MyException("获取特别关注列表失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 更新好友备注
+     *
+     * @param userId 当前用户ID
+     * @param friendId 好友ID
+     * @param remark 备注名
+     * @return 响应
+     * @throws MyException
+     */
+    @Override
+    public ResponseVO updateFriendRemark(String userId, String friendId, String remark) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 查询好友关系
+            FriendRelation relation = friendRelationMapper.selectRelation(userId, friendId);
+            if (relation == null || relation.getStatus() != 1) {
+                throw new MyException("好友关系不存在", FAIL_RES_CODE);
+            }
+
+            // 更新备注
+            relation.setRemark(remark);
+            relation.setUpdateTime(new Date());
+            friendRelationMapper.updateById(relation);
+
+            logger.info("用户 {} 更新了好友 {} 的备注为: {}", userId, friendId, remark);
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo("备注更新成功");
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("更新好友备注失败", e);
+            throw new MyException("更新备注失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 切换好友特别关注状态
+     *
+     * @param userId 当前用户ID
+     * @param friendId 好友ID
+     * @param isSpecial 是否特别关注
+     * @return 响应
+     * @throws MyException
+     */
+    @Override
+    public ResponseVO toggleSpecialAttention(String userId, String friendId, Boolean isSpecial) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 查询好友关系
+            FriendRelation relation = friendRelationMapper.selectRelation(userId, friendId);
+            if (relation == null || relation.getStatus() != 1) {
+                throw new MyException("好友关系不存在", FAIL_RES_CODE);
+            }
+
+            // 更新特别关注状态
+            relation.setIsSpecial(isSpecial ? 1 : 0);
+            relation.setUpdateTime(new Date());
+            friendRelationMapper.updateById(relation);
+
+            logger.info("用户 {} {} 好友 {} 的特别关注", userId, isSpecial ? "添加了" : "取消了", friendId);
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo(isSpecial ? "已添加特别关注" : "已取消特别关注");
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("切换特别关注状态失败", e);
+            throw new MyException("操作失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 删除好友
+     *
+     * @param userId 当前用户ID
+     * @param friendId 好友ID
+     * @return 响应
+     * @throws MyException
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ResponseVO deleteFriend(String userId, String friendId) throws MyException {
+        try {
+            // 验证用户ID不为空
+            if (userId == null || userId.isEmpty()) {
+                throw new MyException("用户未登录", FAIL_RES_CODE);
+            }
+
+            // 查询双向好友关系
+            FriendRelation relation1 = friendRelationMapper.selectRelation(userId, friendId);
+            FriendRelation relation2 = friendRelationMapper.selectRelation(friendId, userId);
+
+            if (relation1 == null || relation1.getStatus() != 1) {
+                throw new MyException("好友关系不存在", FAIL_RES_CODE);
+            }
+
+            // 删除双向好友关系
+            friendRelationMapper.deleteById(relation1.getRelationId());
+            if (relation2 != null) {
+                friendRelationMapper.deleteById(relation2.getRelationId());
+            }
+
+            logger.info("用户 {} 删除了好友 {}", userId, friendId);
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+            responseVO.setCode(SUCCESS_RES_CODE);
+            responseVO.setInfo("好友已删除");
+            return responseVO;
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("删除好友失败", e);
+            throw new MyException("删除好友失败", FAIL_RES_CODE);
         }
     }
 }

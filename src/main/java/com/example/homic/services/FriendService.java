@@ -51,4 +51,75 @@ public interface FriendService {
      * @throws MyException
      */
     Integer getFriendRequestStatus(String userId, String friendId) throws MyException;
+
+    /**
+     * 获取我发出的好友申请列表
+     * @param userId 当前用户ID
+     * @return 好友申请列表
+     * @throws MyException
+     */
+    ResponseVO getSentRequests(String userId) throws MyException;
+
+    /**
+     * 获取我收到的好友申请列表
+     * @param userId 当前用户ID
+     * @return 好友申请列表
+     * @throws MyException
+     */
+    ResponseVO getReceivedRequests(String userId) throws MyException;
+
+    /**
+     * 处理好友申请
+     * @param userId 当前用户ID
+     * @param requestId 申请ID
+     * @param action 操作 (1-接受, 2-拒绝)
+     * @return 响应
+     * @throws MyException
+     */
+    ResponseVO handleFriendRequest(String userId, Long requestId, Integer action) throws MyException;
+
+    /**
+     * 获取我的好友列表
+     * @param userId 当前用户ID
+     * @return 好友列表
+     * @throws MyException
+     */
+    ResponseVO getMyFriends(String userId) throws MyException;
+
+    /**
+     * 获取特别关注的好友列表
+     * @param userId 当前用户ID
+     * @return 好友列表
+     * @throws MyException
+     */
+    ResponseVO getSpecialFriends(String userId) throws MyException;
+
+    /**
+     * 更新好友备注
+     * @param userId 当前用户ID
+     * @param friendId 好友ID
+     * @param remark 备注名
+     * @return 响应
+     * @throws MyException
+     */
+    ResponseVO updateFriendRemark(String userId, String friendId, String remark) throws MyException;
+
+    /**
+     * 切换好友特别关注状态
+     * @param userId 当前用户ID
+     * @param friendId 好友ID
+     * @param isSpecial 是否特别关注
+     * @return 响应
+     * @throws MyException
+     */
+    ResponseVO toggleSpecialAttention(String userId, String friendId, Boolean isSpecial) throws MyException;
+
+    /**
+     * 删除好友
+     * @param userId 当前用户ID
+     * @param friendId 好友ID
+     * @return 响应
+     * @throws MyException
+     */
+    ResponseVO deleteFriend(String userId, String friendId) throws MyException;
 }

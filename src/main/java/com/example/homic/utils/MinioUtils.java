@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,6 +45,68 @@ public class MinioUtils {
      MinioClient minioClient;
     //获取文件返回体
     static Logger logger = LoggerFactory.getLogger(MinioUtils.class);
+    /**
+     * 初始化bucket，如果不存在则创建，并设置为公开访问策略
+     */
+    @PostConstruct
+    public void initBucket() {
+        try {
+            String bucketName = minioProperties.getBucketName();
+
+            // 检查bucket是否存在
+            boolean exists = minioClient.bucketExists(
+                    BucketExistsArgs.builder()
+                            .bucket(bucketName)
+                            .build()
+            );
+
+            // 如果不存在则创建
+            if (!exists) {
+                minioClient.makeBucket(
+                        MakeBucketArgs.builder()
+                                .bucket(bucketName)
+                                .build()
+                );
+                logger.info("创建bucket成功: {}", bucketName);
+            }
+
+            // 设置bucket为公开访问策略（允许读写）
+            String policy = "{\n" +
+                    "  \"Version\": \"2012-10-17\",\n" +
+                    "  \"Statement\": [\n" +
+                    "    {\n" +
+                    "      \"Effect\": \"Allow\",\n" +
+                    "      \"Principal\": {\"AWS\": \"*\"},\n" +
+                    "      \"Action\": [\n" +
+                    "        \"s3:GetObject\",\n" +
+                    "        \"s3:PutObject\",\n" +
+                    "        \"s3:DeleteObject\"\n" +
+                    "      ],\n" +
+                    "      \"Resource\": \"arn:aws:s3:::" + bucketName + "/*\"\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"Effect\": \"Allow\",\n" +
+                    "      \"Principal\": {\"AWS\": \"*\"},\n" +
+                    "      \"Action\": \"s3:ListBucket\",\n" +
+                    "      \"Resource\": \"arn:aws:s3:::" + bucketName + "\"\n" +
+                    "    }\n" +
+                    "  ]\n" +
+                    "}";
+
+            minioClient.setBucketPolicy(
+                    SetBucketPolicyArgs.builder()
+                            .bucket(bucketName)
+                            .config(policy)
+                            .build()
+            );
+
+            logger.info("设置bucket访问策略成功: {}", bucketName);
+
+        } catch (Exception e) {
+            logger.error("初始化MinIO bucket失败", e);
+        }
+    }
+
     public  GetObjectResponse getFileResponse(String filePath) throws Exception{
         GetObjectResponse objectResponse = null;
         try {
@@ -158,4 +221,21 @@ public class MinioUtils {
         }
         return true;
     }
+
+
+    //检查文件是否存在
+    public boolean checkExist(String filePath) {
+        try {
+            minioClient.statObject(
+                    StatObjectArgs
+                            .builder()
+                            .bucket(minioProperties.getBucketName())
+                            .object(filePath)
+                            .build());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }

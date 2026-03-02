@@ -1,5 +1,6 @@
 package com.example.homic.services.implement;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.homic.config.RedisManager;
 import com.example.homic.config.properties.AppProperties;
@@ -16,7 +17,9 @@ import com.example.homic.utils.StringUtils;
 import com.example.homic.utils.RedisUtils;
 import com.example.homic.vo.ResponseVO;
 import com.example.homic.dto.redis.RedisSettingDTO;
+import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang3.ArrayUtils;
+import org.checkerframework.checker.units.qual.min;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -234,8 +237,15 @@ public class AccountServiceImpl implements AccountService {
         UserInfo userInfo = userInfoMapper.selectByPrimaryKey(userId);
         String avatarName = userInfo.getUserAvatar();
         //拼接文件夹位置
+        if(StrUtil.isBlank(avatarName)){
+            avatarName = DEFAULT_AVATAR_FILE_NAME;
+        }
         String filePath = FILE_AVATAR_PATH+avatarName;
-        minioUtils.getFile(filePath,response);
+        if(!minioUtils.checkExist(filePath)){
+            minioUtils.getFile(USER_DEFAULT_AVATAR_PATH, response);
+        }else{
+            minioUtils.getFile(filePath,response);
+        }
     }
 
     /**

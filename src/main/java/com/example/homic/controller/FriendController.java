@@ -111,4 +111,141 @@ public class FriendController {
         responseVO.setData(status);
         return responseVO;
     }
+
+    /**
+     * 获取我发出的好友申请列表
+     *
+     * @param session HTTP会话
+     * @return 好友申请列表
+     * @throws MyException
+     */
+    @RequestMapping("/getSentRequests")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO getSentRequests(HttpSession session) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.getSentRequests(userInfo.getUserId());
+    }
+
+    /**
+     * 获取我收到的好友申请列表
+     *
+     * @param session HTTP会话
+     * @return 好友申请列表
+     * @throws MyException
+     */
+    @RequestMapping("/getReceivedRequests")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO getReceivedRequests(HttpSession session) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.getReceivedRequests(userInfo.getUserId());
+    }
+
+    /**
+     * 处理好友申请
+     *
+     * @param session HTTP会话
+     * @param requestId 申请ID
+     * @param action 操作 (1-接受, 2-拒绝)
+     * @return 响应
+     * @throws MyException
+     */
+    @RequestMapping("/handleFriendRequest")
+    @GlobalInteceptor(checkLogin = true, checkParams = true)
+    public ResponseVO handleFriendRequest(
+            HttpSession session,
+            @VerifyParam(required = true)
+            Long requestId,
+            @VerifyParam(required = true)
+            Integer action) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.handleFriendRequest(userInfo.getUserId(), requestId, action);
+    }
+
+    /**
+     * 获取我的好友列表
+     *
+     * @param session HTTP会话
+     * @return 好友列表
+     * @throws MyException
+     */
+    @RequestMapping("/getMyFriends")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO getMyFriends(HttpSession session) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.getMyFriends(userInfo.getUserId());
+    }
+
+    /**
+     * 获取特别关注的好友列表
+     *
+     * @param session HTTP会话
+     * @return 好友列表
+     * @throws MyException
+     */
+    @RequestMapping("/getSpecialFriends")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO getSpecialFriends(HttpSession session) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.getSpecialFriends(userInfo.getUserId());
+    }
+
+    /**
+     * 更新好友备注
+     *
+     * @param session HTTP会话
+     * @param friendId 好友ID
+     * @param remark 备注名
+     * @return 响应
+     * @throws MyException
+     */
+    @RequestMapping("/updateFriendRemark")
+    @GlobalInteceptor(checkLogin = true, checkParams = true)
+    public ResponseVO updateFriendRemark(
+            HttpSession session,
+            @VerifyParam(required = true)
+            String friendId,
+            @VerifyParam(required = true)
+            String remark) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.updateFriendRemark(userInfo.getUserId(), friendId, remark);
+    }
+
+    /**
+     * 切换好友特别关注状态
+     *
+     * @param session HTTP会话
+     * @param friendId 好友ID
+     * @param isSpecial 是否特别关注
+     * @return 响应
+     * @throws MyException
+     */
+    @RequestMapping("/toggleSpecialAttention")
+    @GlobalInteceptor(checkLogin = true, checkParams = true)
+    public ResponseVO toggleSpecialAttention(
+            HttpSession session,
+            @VerifyParam(required = true)
+            String friendId,
+            @VerifyParam(required = true)
+            Boolean isSpecial) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.toggleSpecialAttention(userInfo.getUserId(), friendId, isSpecial);
+    }
+
+    /**
+     * 删除好友
+     *
+     * @param session HTTP会话
+     * @param friendId 好友ID
+     * @return 响应
+     * @throws MyException
+     */
+    @RequestMapping("/deleteFriend")
+    @GlobalInteceptor(checkLogin = true, checkParams = true)
+    public ResponseVO deleteFriend(
+            HttpSession session,
+            @VerifyParam(required = true)
+            String friendId) throws MyException {
+        SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
+        return friendService.deleteFriend(userInfo.getUserId(), friendId);
+    }
 }

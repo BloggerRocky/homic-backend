@@ -21,7 +21,7 @@ public class FriendRequest implements Serializable {
     /**
      * 申请ID
      */
-    @TableId(value = "request_id", type = IdType.INPUT)
+    @TableId(value = "request_id", type = IdType.ASSIGN_ID)
     private String requestId;
 
     /**

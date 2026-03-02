@@ -83,7 +83,8 @@ public class NormalConstants {
     public static final String SESSION_REFERENCE = "javax.servlet.http.HttpSession";//Session引用
     public static final String[] PICTURE_TYPE_ARRAY = {".img",".jpeg",".jpg",".png"};//图片格式数组
 
-    public static final String DEFAULT_AVATAR_FILE_NAME = "default_avatar.jpeg";//默认头像文件名
+    public static final String DEFAULT_AVATAR_FILE_NAME = "default_avatar.jpg";//默认头像文件名
     public static final String DEFAULT_FOLDER_ICON_NAME ="default_folder_icon.jpg";//默认文件夹图片地址
     public static final Map<String,Integer> SHARE_EXPIRE_TIME_MAP = Map.of("0",1,"1",7,"2",30,"3",3650);//过期时间映射表
+    public static final String USER_DEFAULT_AVATAR_PATH = "avatar/default_avatar.jpg";
 }

@@ -21,7 +21,7 @@ public class FriendRelation implements Serializable {
     /**
      * 关系ID
      */
-    @TableId(value = "relation_id", type = IdType.INPUT)
+    @TableId(value = "relation_id", type = IdType.ASSIGN_ID)
     private String relationId;
 
     /**
@@ -49,6 +49,12 @@ public class FriendRelation implements Serializable {
      * 好友分组ID
      */
     private String groupId;
+
+    /**
+     * 是否特别关注
+     * 0-否，1-是
+     */
+    private Integer isSpecial;
 
     /**
      * 创建时间
@@ -110,6 +116,14 @@ public class FriendRelation implements Serializable {
 
     public void setGroupId(String groupId) {
         this.groupId = groupId;
+    }
+
+    public Integer getIsSpecial() {
+        return isSpecial;
+    }
+
+    public void setIsSpecial(Integer isSpecial) {
+        this.isSpecial = isSpecial;
     }
 
     public Date getCreateTime() {

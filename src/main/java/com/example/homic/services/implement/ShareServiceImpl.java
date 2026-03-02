@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpSession;
 import java.util.Date;
@@ -196,6 +197,7 @@ public class ShareServiceImpl implements ShareService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean saveShareFile(String[] shareFileIdArray, String userId, String myFolderId) {
         try {
             LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
