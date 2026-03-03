@@ -3,8 +3,10 @@ package com.example.homic.services;
 import com.example.homic.dto.redis.RedisSettingDTO;
 import com.example.homic.exception.MyException;
 import com.example.homic.vo.PageResultVO;
+import com.example.homic.vo.ResponseVO;
 import com.example.homic.vo.UserInfoVO;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 作者：Rocky23318
@@ -56,4 +58,14 @@ public interface AdminService {
      */
 
     boolean updateUserSpace(String userId, Integer space);
+
+    /**
+     * 快速创建用户
+     * @param email
+     * @param nickName
+     * @param password
+     * @param avatar
+     * @return
+     */
+    ResponseVO createUser(String email, String nickName, String password, MultipartFile avatar) throws Exception;
 }

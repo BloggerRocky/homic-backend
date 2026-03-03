@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.mail.Session;
 import javax.servlet.http.HttpServletResponse;
@@ -186,5 +187,20 @@ public class AdminController {
             String msg
     ) throws Exception {
         fileService.getVideoInfo(response,msg,userId,session);
+    }
+
+    /**
+     * 快速创建用户
+     */
+    @RequestMapping("/createUser")
+    @GlobalInteceptor(checkLogin = true, checkAdmin = true, checkParams = true)
+    public ResponseVO createUser(
+            HttpSession session,
+            @VerifyParam(required = true) String email,
+            @VerifyParam(max = 20) String nickName,
+            @VerifyParam(required = true, min = 6) String password,
+            MultipartFile avatar
+    ) throws Exception {
+        return adminService.createUser(email, nickName, password, avatar);
     }
 }

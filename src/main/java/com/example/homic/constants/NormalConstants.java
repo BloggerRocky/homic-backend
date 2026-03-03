@@ -18,6 +18,10 @@ public class NormalConstants {
     public static final String FILE_ROOT_PATH = "file/";
     public static final String FILE_SYSTEM_PATH = "file/0000-00-00/system/";
     public static final String FILE_AVATAR_PATH = "avatar/";
+
+    public static final String FAMILY_PATH = "family/";
+
+    public static final String FAMILY_AVATAR_PATH = "family/avatar/";
     public static final String FILE_TEMP_PATH  = "temp/";
     public static final String FILE_CUTTING_FOLDER = "cuttings";
     public static final String FILE_DEFAULT_TS_NAME  = "index.ts";

@@ -1,6 +1,7 @@
 package com.example.homic.model;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -27,44 +28,52 @@ public class FriendRelation implements Serializable {
     /**
      * 发起者用户ID
      */
+    @TableField("user_id")
     private String userId;
 
     /**
      * 好友用户ID
      */
+    @TableField("friend_id")
     private String friendId;
 
     /**
      * 关系状态
      * 0-已删除，1-已接受，2-已拒绝
      */
+    @TableField("status")
     private Integer status;
 
     /**
      * 好友备注名
      */
+    @TableField("remark")
     private String remark;
 
     /**
      * 好友分组ID
      */
+    @TableField("group_id")
     private String groupId;
 
     /**
      * 是否特别关注
      * 0-否，1-是
      */
+    @TableField("is_special")
     private Integer isSpecial;
 
     /**
      * 创建时间
      */
+    @TableField("create_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date createTime;
 
     /**
      * 更新时间
      */
+    @TableField("update_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date updateTime;
 

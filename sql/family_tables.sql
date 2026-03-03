@@ -1,51 +1,54 @@
--- 家庭功能相关表
+-- 家庭信息表
+CREATE TABLE IF NOT EXISTS `family` (
+    `family_id` VARCHAR(10) NOT NULL COMMENT '家庭ID',
+    `family_name` VARCHAR(50) NOT NULL COMMENT '家庭名称',
+    `family_desc` VARCHAR(200) DEFAULT NULL COMMENT '家庭描述',
+    `family_avatar` VARCHAR(150) DEFAULT NULL COMMENT '家庭头像',
+    `family_code` VARCHAR(10) NOT NULL COMMENT '家庭码',
+    `creator_id` VARCHAR(15) NOT NULL COMMENT '创建者ID',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`family_id`),
+    UNIQUE KEY `uk_family_code` (`family_code`),
+    KEY `idx_creator_id` (`creator_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家庭信息表';
 
--- ----------------------------
--- Table structure for family
--- ----------------------------
-DROP TABLE IF EXISTS `family`;
-CREATE TABLE `family`  (
-  `family_id` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '家庭ID',
-  `family_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '家庭名称',
-  `owner_id` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '家庭所有者ID（创建者）',
-  `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '家庭描述',
-  `total_space` bigint NOT NULL DEFAULT 1099511627776 COMMENT '家庭总空间（单位Byte，默认1TB）',
-  `use_space` bigint NOT NULL DEFAULT 0 COMMENT '家庭已用空间（单位Byte）',
-  `member_count` int NOT NULL DEFAULT 1 COMMENT '家庭成员数',
-  `status` int NOT NULL DEFAULT 1 COMMENT '家庭状态：0-禁用，1-正常',
-  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`family_id`) USING BTREE,
-  UNIQUE INDEX `idx_family_id`(`family_id` ASC) USING BTREE,
-  INDEX `idx_owner_id`(`owner_id` ASC) USING BTREE,
-  INDEX `idx_create_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '家庭信息表' ROW_FORMAT = Dynamic;
+-- 家庭成员表
+CREATE TABLE IF NOT EXISTS `family_member` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `family_id` VARCHAR(10) NOT NULL COMMENT '家庭ID',
+    `user_id` VARCHAR(15) NOT NULL COMMENT '用户ID',
+    `role` TINYINT NOT NULL DEFAULT 2 COMMENT '角色 0-创建者 1-管理员 2-成员',
+    `remark` VARCHAR(50) DEFAULT NULL COMMENT '成员备注（仅在该家庭内生效）',
+    `join_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_family_user` (`family_id`, `user_id`),
+    KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家庭成员表';
 
--- ----------------------------
--- Table structure for family_member
--- ----------------------------
-DROP TABLE IF EXISTS `family_member`;
-CREATE TABLE `family_member`  (
-  `member_id` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '成员ID',
-  `family_id` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '家庭ID',
-  `user_id` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '用户ID',
-  `role_id` int NOT NULL COMMENT '角色ID：1-主人(Owner)，2-家长(Guardian)，3-儿童(Children)',
-  `nick_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '在家庭中的昵称',
-  `join_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入家庭的时间',
-  `status` int NOT NULL DEFAULT 1 COMMENT '成员状态：0-已移除，1-正常，2-待审核',
-  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`member_id`) USING BTREE,
-  UNIQUE INDEX `idx_family_user`(`family_id` ASC, `user_id` ASC) USING BTREE,
-  INDEX `idx_family_id`(`family_id` ASC) USING BTREE,
-  INDEX `idx_user_id`(`user_id` ASC) USING BTREE,
-  INDEX `idx_role_id`(`role_id` ASC) USING BTREE,
-  CONSTRAINT `fk_family_member_family` FOREIGN KEY (`family_id`) REFERENCES `family` (`family_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_family_member_user` FOREIGN KEY (`user_id`) REFERENCES `user_info` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '家庭成员表' ROW_FORMAT = Dynamic;
+-- 家庭邀请表
+CREATE TABLE IF NOT EXISTS `family_invite` (
+    `invite_id` VARCHAR(15) NOT NULL COMMENT '邀请ID',
+    `family_id` VARCHAR(10) NOT NULL COMMENT '家庭ID',
+    `from_user_id` VARCHAR(15) NOT NULL COMMENT '邀请人ID',
+    `to_user_id` VARCHAR(15) NOT NULL COMMENT '被邀请人ID',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0-待处理 1-已接受 2-已拒绝',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`invite_id`),
+    KEY `idx_to_user_status` (`to_user_id`, `status`),
+    KEY `idx_family_id` (`family_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家庭邀请表';
 
--- ----------------------------
--- 修改user_info表，添加family_id字段
--- ----------------------------
-ALTER TABLE `user_info` ADD COLUMN `family_id` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '所属家庭ID' AFTER `admin`;
-ALTER TABLE `user_info` ADD INDEX `idx_family_id`(`family_id` ASC);
+-- 家庭申请表
+CREATE TABLE IF NOT EXISTS `family_apply` (
+    `apply_id` VARCHAR(15) NOT NULL COMMENT '申请ID',
+    `family_id` VARCHAR(10) NOT NULL COMMENT '家庭ID',
+    `user_id` VARCHAR(15) NOT NULL COMMENT '申请人ID',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0-待处理 1-已同意 2-已拒绝',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`apply_id`),
+    KEY `idx_family_status` (`family_id`, `status`),
+    KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='家庭申请表';

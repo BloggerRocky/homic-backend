@@ -1,6 +1,9 @@
 package com.example.homic.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+
+import java.util.Date;
 
 /**
  * 好友信息VO
@@ -39,4 +42,10 @@ public class FriendInfoVO {
      * 关系ID
      */
     private String relationId;
+
+    /**
+     * 结交时间（好友关系创建时间）
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date createTime;
 }

@@ -1,6 +1,7 @@
 package com.example.homic.controller;
 
 import com.example.homic.dto.session.SessionWebUserDTO;
+import com.example.homic.model.UserInfo;
 
 import javax.servlet.http.HttpSession;
 
@@ -16,5 +17,8 @@ public class CommonController {
         SessionWebUserDTO userInfo = (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
         String userId = userInfo.getUserId();
         return userId;
+    }
+    SessionWebUserDTO getUserInfoFromSession(HttpSession session) {
+        return (SessionWebUserDTO) session.getAttribute(SESSION_USER_INFO_KEY);
     }
 }

@@ -1,9 +1,9 @@
 package com.example.homic.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.homic.model.FamilyMember;
+import com.example.homic.model.FamilyApply;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface FamilyMemberMapper extends BaseMapper<FamilyMember> {
+public interface FamilyApplyMapper extends BaseMapper<FamilyApply> {
 }

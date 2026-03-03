@@ -643,6 +643,7 @@ public class FriendServiceImpl implements FriendService {
                 vo.setFriendId(relation.getFriendId());
                 vo.setRemark(relation.getRemark());
                 vo.setIsSpecial(relation.getIsSpecial() != null ? relation.getIsSpecial() : 0);
+                vo.setCreateTime(relation.getCreateTime());
 
                 // 查询好友信息
                 UserInfo friendInfo = userInfoMapper.selectByPrimaryKey(relation.getFriendId());
@@ -693,6 +694,7 @@ public class FriendServiceImpl implements FriendService {
                 vo.setFriendId(relation.getFriendId());
                 vo.setRemark(relation.getRemark());
                 vo.setIsSpecial(relation.getIsSpecial() != null ? relation.getIsSpecial() : 0);
+                vo.setCreateTime(relation.getCreateTime());
 
                 // 查询好友信息
                 UserInfo friendInfo = userInfoMapper.selectByPrimaryKey(relation.getFriendId());

@@ -11,15 +11,24 @@ import com.example.homic.mapper.UserInfoMapper;
 import com.example.homic.model.UserInfo;
 import com.example.homic.services.AdminService;
 import com.example.homic.config.RedisManager;
+import com.example.homic.utils.MinioUtils;
 import com.example.homic.utils.RedisUtils;
+import com.example.homic.utils.StringUtils;
 import com.example.homic.vo.PageResultVO;
+import com.example.homic.vo.ResponseVO;
 import com.example.homic.vo.UserInfoVO;
+import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Date;
 
 import static com.example.homic.constants.CodeConstants.FAIL_RES_CODE;
+import static com.example.homic.constants.CodeConstants.FAIL_RES_STATUS;
+import static com.example.homic.constants.CodeConstants.SUCCESS_RES_STATUS;
 import static com.example.homic.constants.NormalConstants.*;
 
 /**
@@ -33,7 +42,11 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
     RedisManager redisManager;
     @Autowired
     UserInfoMapper userInfoMapper;
+    @Autowired
+    MinioUtils minioUtils;
+
     private static Logger logger = LoggerFactory.getLogger(AdminServiceImpl.class);
+    private static final String[] PICTURE_TYPE_ARRAY = new String[]{".png", ".PNG", ".jpg", ".JPG", ".jpeg", ".JPEG", ".gif", ".GIF", ".bmp", ".BMP"};
     /**
      * 获取系统设置信息
      * @return
@@ -132,6 +145,83 @@ public class AdminServiceImpl extends CommonServiceImpl implements AdminService 
         } catch (Exception e) {
             logger.error("修改用户空间失败",e);
             return false;
+        }
+    }
+
+    @Override
+    public ResponseVO createUser(String email, String nickName, String password, MultipartFile avatar) throws Exception {
+        // 验证邮箱格式
+        if (email == null || !email.matches("^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$")) {
+            return new ResponseVO(FAIL_RES_STATUS, "邮箱格式不正确");
+        }
+
+        // 检查邮箱是否已存在
+        LambdaQueryWrapper<UserInfo> checkWrapper = new LambdaQueryWrapper<>();
+        checkWrapper.eq(UserInfo::getEmail, email);
+        if (userInfoMapper.selectCount(checkWrapper) > 0) {
+            return new ResponseVO(FAIL_RES_STATUS, "该邮箱已被注册");
+        }
+
+        // 验证昵称
+        if (nickName == null || nickName.trim().isEmpty()) {
+            nickName = email.split("@")[0]; // 如果昵称为空，使用邮箱前缀
+        }
+
+        // 验证密码
+        if (password == null || password.length() < 6) {
+            return new ResponseVO(FAIL_RES_STATUS, "密码长度至少为6位");
+        }
+
+        // 生成用户ID
+        String userId = StringUtils.getSerialNumber(10);
+
+        // 处理头像上传
+        String avatarName = null;
+        if (avatar != null && !avatar.isEmpty()) {
+            // 验证文件类型
+            String fileType = avatar.getOriginalFilename().substring(avatar.getOriginalFilename().lastIndexOf("."));
+            if (!ArrayUtils.contains(PICTURE_TYPE_ARRAY, fileType)) {
+                return new ResponseVO(FAIL_RES_STATUS, "头像格式不支持");
+            }
+
+            // 生成头像文件名
+            avatarName = userId + fileType;
+
+            try {
+                minioUtils.saveMultipartFile(FILE_AVATAR_PATH + avatarName, avatar);
+            } catch (MyException e) {
+                logger.error("头像上传失败", e);
+                return new ResponseVO(FAIL_RES_STATUS, "头像上传失败");
+            }
+        }
+
+        // 获取系统设置
+        RedisSettingDTO systemSettings = getSysSettings();
+        Long totalSpace = systemSettings.getUserInitUseSpace() * 1024 * 1024L;
+
+        // 创建用户
+        UserInfo userInfo = new UserInfo();
+        userInfo.setUserId(userId);
+        userInfo.setEmail(email);
+        userInfo.setNickName(nickName);
+        userInfo.setPassword(StringUtils.getMD5(password));
+        userInfo.setJoinTime(new Date());
+        userInfo.setLastLoginTime(new Date());
+        userInfo.setStatus(1); // 默认启用
+        userInfo.setUseSpace(0L);
+        userInfo.setTotalSpace(totalSpace);
+        userInfo.setAdmin(false);
+
+        if (avatarName != null) {
+            userInfo.setUserAvatar(avatarName);
+        }
+
+        try {
+            userInfoMapper.insert(userInfo);
+            return new ResponseVO(SUCCESS_RES_STATUS, "用户创建成功");
+        } catch (Exception e) {
+            logger.error("创建用户失败", e);
+            return new ResponseVO(FAIL_RES_STATUS, "创建用户失败");
         }
     }
 }
