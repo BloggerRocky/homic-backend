@@ -13,6 +13,7 @@ public class FamilyMemberVO {
     private Integer role;  // 0-创建者 1-管理员 2-成员
     private String remark;  // 成员备注（仅在该家庭内生效）
     private Boolean isFriend;  // 是否为好友
+    private Boolean isDummy;  // 是否为关怀账号
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date joinTime;

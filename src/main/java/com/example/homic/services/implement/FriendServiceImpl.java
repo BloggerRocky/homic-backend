@@ -318,10 +318,24 @@ public class FriendServiceImpl implements FriendService {
                 throw new MyException("用户未登录", FAIL_RES_CODE);
             }
 
+            // 获取当前用户信息，检查是否为关怀账号
+            UserInfo currentUser = userInfoMapper.selectByPrimaryKey(userId);
+            if (currentUser == null) {
+                throw new MyException("用户不存在", FAIL_RES_CODE);
+            }
+            if (currentUser.getIsDummy() != null && currentUser.getIsDummy() == 1) {
+                throw new MyException("关怀账号不支持添加好友", FAIL_RES_CODE);
+            }
+
             // 验证被申请者是否存在
             UserInfo targetUser = userInfoMapper.selectByPrimaryKey(friendId);
             if (targetUser == null) {
                 throw new MyException("用户不存在", FAIL_RES_CODE);
+            }
+
+            // 检查目标用户是否为关怀账号
+            if (targetUser.getIsDummy() != null && targetUser.getIsDummy() == 1) {
+                throw new MyException("关怀账号不支持添加好友", FAIL_RES_CODE);
             }
 
             // 不能给自己发送好友申请

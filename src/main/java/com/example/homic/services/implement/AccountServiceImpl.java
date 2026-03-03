@@ -192,6 +192,8 @@ public class AccountServiceImpl implements AccountService {
             saveUseSpaceToRedis(userInfo);
             //装填用户信息
             SessionWebUserDTO sessionWebUserDTO = modelMapper.map(userInfo,SessionWebUserDTO.class);
+            // 手动设置isDummy字段（Integer转Boolean）
+            sessionWebUserDTO.setIsDummy(userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1);
             return sessionWebUserDTO;
         }
     }

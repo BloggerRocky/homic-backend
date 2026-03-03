@@ -34,6 +34,8 @@ public class UserInfo implements Serializable {
 
     private Boolean admin;
 
+    private Integer isDummy;  // 是否为关怀账号 0-否 1-是
+
     private static final long serialVersionUID = 1L;
 
     public String getUserId() {
@@ -130,5 +132,13 @@ public class UserInfo implements Serializable {
 
     public void setAdmin(Boolean admin) {
         this.admin = admin;
+    }
+
+    public Integer getIsDummy() {
+        return isDummy;
+    }
+
+    public void setIsDummy(Integer isDummy) {
+        this.isDummy = isDummy;
     }
 }

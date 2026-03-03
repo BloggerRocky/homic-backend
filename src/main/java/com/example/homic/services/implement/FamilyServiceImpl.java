@@ -167,6 +167,7 @@ public class FamilyServiceImpl implements FamilyService {
             if (userInfo != null) {
                 vo.setNickName(userInfo.getNickName());
                 vo.setAvatar(userInfo.getUserAvatar());
+                vo.setIsDummy(userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1);
             }
 
             // 检查是否为好友（排除自己）
@@ -335,6 +336,12 @@ public class FamilyServiceImpl implements FamilyService {
 
     @Override
     public ResponseVO generateCode(String userId) {
+        // 检查是否为关怀账号
+        UserInfo userInfo = userInfoMapper.selectByPrimaryKey(userId);
+        if (userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1) {
+            return new ResponseVO(FAIL_RES_STATUS, "关怀账号不支持此操作");
+        }
+
         // 获取用户所在家庭
         LambdaQueryWrapper<FamilyMember> memberWrapper = new LambdaQueryWrapper<>();
         memberWrapper.eq(FamilyMember::getUserId, userId);
@@ -360,6 +367,12 @@ public class FamilyServiceImpl implements FamilyService {
     @Override
     @Transactional
     public ResponseVO inviteFriends(String userId, String friendIds) {
+        // 检查是否为关怀账号
+        UserInfo userInfo = userInfoMapper.selectByPrimaryKey(userId);
+        if (userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1) {
+            return new ResponseVO(FAIL_RES_STATUS, "关怀账号不支持此操作");
+        }
+
         // 获取用户所在家庭
         LambdaQueryWrapper<FamilyMember> memberWrapper = new LambdaQueryWrapper<>();
         memberWrapper.eq(FamilyMember::getUserId, userId);
@@ -405,6 +418,12 @@ public class FamilyServiceImpl implements FamilyService {
     @Override
     @Transactional
     public ResponseVO leaveFamily(String userId) {
+        // 检查是否为关怀账号
+        UserInfo userInfo = userInfoMapper.selectByPrimaryKey(userId);
+        if (userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1) {
+            return new ResponseVO(FAIL_RES_STATUS, "关怀账号不支持此操作");
+        }
+
         // 获取用户所在家庭
         LambdaQueryWrapper<FamilyMember> memberWrapper = new LambdaQueryWrapper<>();
         memberWrapper.eq(FamilyMember::getUserId, userId);
@@ -722,6 +741,12 @@ public class FamilyServiceImpl implements FamilyService {
 
         if (targetMember == null) {
             return new ResponseVO(FAIL_RES_STATUS, "目标成员不存在");
+        }
+
+        // 检查目标成员是否为关怀账号
+        UserInfo targetUserInfo = userInfoMapper.selectByPrimaryKey(userId);
+        if (targetUserInfo != null && targetUserInfo.getIsDummy() != null && targetUserInfo.getIsDummy() == 1) {
+            return new ResponseVO(FAIL_RES_STATUS, "关怀账号不能被设置为管理员");
         }
 
         // 不能修改自己的权限

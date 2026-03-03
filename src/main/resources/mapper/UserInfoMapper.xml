@@ -14,10 +14,11 @@
     <result column="use_space" jdbcType="BIGINT" property="useSpace" />
     <result column="total_space" jdbcType="BIGINT" property="totalSpace" />
     <result column="admin" jdbcType="BIT" property="admin" />
+    <result column="is_dummy" jdbcType="INTEGER" property="isDummy" />
   </resultMap>
   <sql id="Base_Column_List">
     user_id, nick_name, email, qq_open_id, user_avatar, password, join_time, last_login_time,
-    status, use_space, total_space, admin
+    status, use_space, total_space, admin, is_dummy
   </sql>
   <select id="selectByPrimaryKey" parameterType="java.lang.String" resultMap="BaseResultMap">
     select
@@ -33,12 +34,12 @@
     insert into user_info (user_id, nick_name, email,
       qq_open_id, user_avatar, password,
       join_time, last_login_time, status,
-      use_space, total_space, admin
+      use_space, total_space, admin, is_dummy
       )
     values (#{userId,jdbcType=VARCHAR}, #{nickName,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR},
       #{qqOpenId,jdbcType=VARCHAR}, #{userAvatar,jdbcType=VARCHAR}, #{password,jdbcType=VARCHAR},
       #{joinTime,jdbcType=TIMESTAMP}, #{lastLoginTime,jdbcType=TIMESTAMP}, #{status,jdbcType=BIT},
-      #{useSpace,jdbcType=BIGINT}, #{totalSpace,jdbcType=BIGINT}, #{admin,jdbcType=BIT}
+      #{useSpace,jdbcType=BIGINT}, #{totalSpace,jdbcType=BIGINT}, #{admin,jdbcType=BIT}, #{isDummy,jdbcType=INTEGER}
       )
   </insert>
   <insert id="insertSelective" parameterType="com.example.homic.model.UserInfo">
@@ -80,6 +81,9 @@
       <if test="admin != null">
         admin,
       </if>
+      <if test="isDummy != null">
+        is_dummy,
+      </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="userId != null">
@@ -117,6 +121,9 @@
       </if>
       <if test="admin != null">
         #{admin,jdbcType=BIT},
+      </if>
+      <if test="isDummy != null">
+        #{isDummy,jdbcType=INTEGER},
       </if>
     </trim>
   </insert>
@@ -156,6 +163,9 @@
       <if test="admin != null">
         admin = #{admin,jdbcType=BIT},
       </if>
+      <if test="isDummy != null">
+        is_dummy = #{isDummy,jdbcType=INTEGER},
+      </if>
     </set>
     where user_id = #{userId,jdbcType=VARCHAR}
   </update>
@@ -171,7 +181,8 @@
       status = #{status,jdbcType=BIT},
       use_space = #{useSpace,jdbcType=BIGINT},
       total_space = #{totalSpace,jdbcType=BIGINT},
-      admin = #{admin,jdbcType=BIT}
+      admin = #{admin,jdbcType=BIT},
+      is_dummy = #{isDummy,jdbcType=INTEGER}
     where user_id = #{userId,jdbcType=VARCHAR}
   </update>
 </mapper>

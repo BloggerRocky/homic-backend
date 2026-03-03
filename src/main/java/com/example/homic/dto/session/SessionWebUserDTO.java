@@ -14,5 +14,6 @@ public class SessionWebUserDTO {
     private String userId;
     private String userAvatar;
     private Boolean admin;
+    private Boolean isDummy;  // 是否为关怀账号
 
 }
