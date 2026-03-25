@@ -27,4 +27,5 @@ public class FileInfoVO {
     private Integer fileType;
     private Integer status;
     private String nickName;
+    private Integer visibleToCare;
 }

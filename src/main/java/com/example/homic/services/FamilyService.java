@@ -117,4 +117,9 @@ public interface FamilyService {
      * 移出成员
      */
     ResponseVO removeMember(String operatorId, String userId);
+
+    /**
+     * 获取用户权限
+     */
+    ResponseVO getUserPermissions(String userId, String familyId);
 }

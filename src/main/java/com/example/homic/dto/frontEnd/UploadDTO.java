@@ -17,6 +17,7 @@ public class UploadDTO {
     private Integer chunkIndex;//分片索引
     private Integer chunks;//总分片数
     private String belongingHome;//所属家庭ID，null表示个人文件
+    private Integer visibleToCare;//对关怀用户可见性：0-不可见，1-可见
 
     public String getFileId() {
         return fileId;
@@ -82,7 +83,16 @@ public class UploadDTO {
         this.belongingHome = belongingHome;
     }
 
+    public Integer getVisibleToCare() {
+        return visibleToCare;
+    }
+
+    public void setVisibleToCare(Integer visibleToCare) {
+        this.visibleToCare = visibleToCare;
+    }
+
     public UploadDTO() {
+        this.visibleToCare = 0; // 默认对关怀用户不可见
     }
 
     @Override

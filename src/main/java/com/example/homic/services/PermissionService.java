@@ -17,6 +17,7 @@ public interface PermissionService {
     String PERMISSION_UPLOAD = "FAMILY-UPLOAD";
     String PERMISSION_MODIFY = "FAMILY-MODIFY";
     String PERMISSION_DELETE = "FAMILY-DELETE";
+    String PERMISSION_CARE_VISIBILITY_MANAGE = "CARE-VISIBILITY-MANAGE";
 
     /**
      * 检查用户是否有特定权限

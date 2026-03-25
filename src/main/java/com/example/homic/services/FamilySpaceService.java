@@ -94,12 +94,23 @@ public interface FamilySpaceService {
 
     /**
      * 移动家庭空间文件
-     * @param fileIds 文件ID列表（逗号分隔）
-     * @param filePid 目标父文件夹ID
+     * @param fileIds 文件ID列表，逗号分隔
+     * @param filePid 目标文件夹ID
      * @param userId 当前用户ID
      * @param familyId 家庭ID
-     * @return 移动结果
+     * @return 操作结果
      * @throws MyException
      */
     ResponseVO changeFileFolder(String fileIds, String filePid, String userId, String familyId) throws MyException;
+
+    /**
+     * 更新文件对关怀用户的可见性
+     * @param fileId 文件ID
+     * @param visibleToCare 可见性：0-不可见，1-可见
+     * @param userId 当前用户ID
+     * @param familyId 家庭ID
+     * @return 操作结果
+     * @throws MyException
+     */
+    ResponseVO updateFileVisibleToCare(String fileId, Integer visibleToCare, String userId, String familyId) throws MyException;
 }

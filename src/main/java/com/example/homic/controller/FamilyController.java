@@ -271,4 +271,16 @@ public class FamilyController extends CommonController {
         SessionWebUserDTO userDTO = getUserInfoFromSession(session);
         return familyService.removeMember(userDTO.getUserId(), userId);
     }
+
+    /**
+     * 获取用户权限
+     */
+    @RequestMapping("/getUserPermissions")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO getUserPermissions(
+            HttpSession session,
+            @VerifyParam(required = true) String familyId) {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familyService.getUserPermissions(userDTO.getUserId(), familyId);
+    }
 }

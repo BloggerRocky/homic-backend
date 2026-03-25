@@ -38,6 +38,10 @@ public class FileInfo extends FileInfoKey implements Serializable {
     private Integer delFlag;
 
     private String belongingHome;
+
+    @TableField("visible_to_care")
+    private Integer visibleToCare;
+
     //默认不查询
     @TableField(exist = false)
     private String nickName;
@@ -169,5 +173,13 @@ public class FileInfo extends FileInfoKey implements Serializable {
 
     public void setBelongingHome(String belongingHome) {
         this.belongingHome = belongingHome == null ? null : belongingHome.trim();
+    }
+
+    public Integer getVisibleToCare() {
+        return visibleToCare;
+    }
+
+    public void setVisibleToCare(Integer visibleToCare) {
+        this.visibleToCare = visibleToCare;
     }
 }

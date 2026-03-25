@@ -140,4 +140,18 @@ public class FamilySpaceController extends CommonController {
         SessionWebUserDTO userDTO = getUserInfoFromSession(session);
         return familySpaceService.changeFileFolder(fileIds, filePid, userDTO.getUserId(), familyId);
     }
+
+    /**
+     * 更新文件对关怀用户的可见性
+     */
+    @RequestMapping("/updateFileVisibleToCare")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO updateFileVisibleToCare(
+            HttpSession session,
+            String fileId,
+            Integer visibleToCare,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familySpaceService.updateFileVisibleToCare(fileId, visibleToCare, userDTO.getUserId(), familyId);
+    }
 }

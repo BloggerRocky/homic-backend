@@ -888,4 +888,59 @@ public class FamilyServiceImpl implements FamilyService {
 
         return new ResponseVO(SUCCESS_RES_STATUS, "已移出成员");
     }
+
+    @Override
+    public ResponseVO getUserPermissions(String userId, String familyId) {
+        try {
+            // 校验用户是否属于该家庭
+            validateFamilyMember(userId, familyId);
+
+            // 获取用户在家庭中的角色
+            FamilyMember member = validateFamilyMember(userId, familyId);
+            Integer userRole = member.getRole();
+
+            // 获取家庭信息，检查是否为创建者
+            LambdaQueryWrapper<Family> familyLqw = new LambdaQueryWrapper<>();
+            familyLqw.eq(Family::getFamilyId, familyId);
+            Family family = familyMapper.selectOne(familyLqw);
+            boolean isCreator = family != null && family.getCreatorId().equals(userId);
+
+            // 构建权限对象
+            java.util.Map<String, Object> permissions = new java.util.HashMap<>();
+
+            // 关怀用户可见性管理权限
+            if (isCreator) {
+                // 创建者硬编码拥有权限
+                permissions.put("CARE_VISIBILITY_MANAGE", 1);
+            } else if (userRole == 1) {
+                // 管理员需要检查权限
+                boolean hasPermission = permissionService.hasPermission(userId, permissionService.PERMISSION_CARE_VISIBILITY_MANAGE, familyId);
+                permissions.put("CARE_VISIBILITY_MANAGE", hasPermission ? 1 : 0);
+            } else {
+                // 普通用户无权限
+                permissions.put("CARE_VISIBILITY_MANAGE", 0);
+            }
+
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "获取权限成功");
+            responseVO.setData(permissions);
+            return responseVO;
+
+        } catch (Exception e) {
+            logger.error("获取用户权限失败", e);
+            return new ResponseVO(FAIL_RES_STATUS, "获取权限失败");
+        }
+    }
+    private FamilyMember validateFamilyMember(String userId, String familyId) throws MyException {
+        if (familyId == null || familyId.isEmpty()) {
+            throw new MyException("家庭ID不能为空", FAIL_RES_CODE);
+        }
+        LambdaQueryWrapper<FamilyMember> lqw = new LambdaQueryWrapper<>();
+        lqw.eq(FamilyMember::getUserId, userId);
+        lqw.eq(FamilyMember::getFamilyId, familyId);
+        FamilyMember member = familyMemberMapper.selectOne(lqw);
+        if (member == null) {
+            throw new MyException("您不属于该家庭", FAIL_RES_CODE);
+        }
+        return member;
+    }
 }

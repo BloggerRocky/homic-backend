@@ -3,6 +3,7 @@ package com.example.homic.services.implement;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.homic.config.RedisManager;
@@ -19,6 +20,7 @@ import com.example.homic.mapper.FileInfoMapper;
 import com.example.homic.mapper.UserInfoMapper;
 import com.example.homic.model.Family;
 import com.example.homic.model.FamilyMember;
+import com.example.homic.model.UserInfo;
 import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.FamilySpaceService;
 import com.example.homic.services.PermissionService;
@@ -139,6 +141,11 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
     public ResponseVO loadDataList(QueryInfoDTO queryInfoDTO, String userId, String familyId) throws MyException {
         // 校验用户是否属于该家庭
         validateFamilyMember(userId, familyId);
+
+        // 获取用户信息，判断是否为关怀用户
+        UserInfo userInfo = userInfoMapper.selectById(userId);
+        boolean isCareUser = userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1;
+
         // 家庭空间：按 belongingHome 查询，不按 userId 过滤
         queryInfoDTO.setDelFlag(NORMAL.getFlag());
         queryInfoDTO.setBelongingHome(familyId);
@@ -157,6 +164,11 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             fileInfoLqw.like(FileInfo::getFileName, queryInfoDTO.getFileNameFuzzy());
         fileInfoLqw.eq(FileInfo::getDelFlag, queryInfoDTO.getDelFlag());
         fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+
+        // 如果是关怀用户，只显示对关怀用户可见的文件
+        if (isCareUser) {
+            fileInfoLqw.eq(FileInfo::getVisibleToCare, 1);
+        }
 
         int pageSize = queryInfoDTO.getPageSize() == null ? DEFAULT_PAGE_SIZE : queryInfoDTO.getPageSize();
         int pageNo = queryInfoDTO.getPageNo() == null ? 1 : queryInfoDTO.getPageNo();
@@ -188,6 +200,17 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
 
         // 设置所属家庭
         uploadDTO.setBelongingHome(familyId);
+
+        // 获取用户信息，判断是否为关怀用户
+        UserInfo userInfo = userInfoMapper.selectById(userId);
+        boolean isCareUser = userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1;
+
+        // 关怀用户上传的文件默认对关怀用户可见
+        if (isCareUser) {
+            uploadDTO.setVisibleToCare(1);
+        } else {
+            uploadDTO.setVisibleToCare(0);
+        }
 
         String fileId = uploadDTO.getFileId();
         if (StringUtils.isEmpty(fileId)) {
@@ -226,6 +249,7 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
         fileInfo.setFilePid(uploadDTO.getFilePid());
         fileInfo.setFileName(uploadDTO.getFileName());
         fileInfo.setBelongingHome(familyId);
+        fileInfo.setVisibleToCare(uploadDTO.getVisibleToCare());
         Date date = new Date();
         fileInfo.setCreateTime(date);
         fileInfo.setLastUpdateTime(date);
@@ -316,6 +340,7 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             fileInfo.setStatus(TRANSFERRING.getStatus());
             fileInfo.setFileCategory(fileCategory);
             fileInfo.setBelongingHome(familyId);
+            fileInfo.setVisibleToCare(uploadDTO.getVisibleToCare());
             fileInfo.setDelFlag(NORMAL.getFlag());
             fileInfoMapper.insertSelective(fileInfo);
             // 刷新家庭空间（而非个人空间）
@@ -360,6 +385,14 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             fileInfo.setFilePid(filePid);
             fileInfo.setFileName(fileName);
             fileInfo.setBelongingHome(familyId);
+
+            // 获取用户信息，判断是否为关怀用户
+            UserInfo userInfo = userInfoMapper.selectById(userId);
+            boolean isCareUser = userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1;
+
+            // 关怀用户创建的文件夹默认对关怀用户可见
+            fileInfo.setVisibleToCare(isCareUser ? 1 : 0);
+
             Date date = new Date();
             fileInfo.setCreateTime(date);
             fileInfo.setLastUpdateTime(date);
@@ -601,6 +634,72 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
         } catch (Exception e) {
             logger.error("移动家庭空间文件失败", e);
             throw new MyException("移动文件失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 更新文件对关怀用户的可见性
+     */
+    @Override
+    @Transactional
+    public ResponseVO updateFileVisibleToCare(String fileId, Integer visibleToCare, String userId, String familyId) throws MyException {
+        // 校验用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+
+        // 获取用户在家庭中的角色
+        FamilyMember member = validateFamilyMember(userId, familyId);
+        Integer userRole = member.getRole();
+
+        // 获取家庭信息，检查是否为创建者
+        LambdaQueryWrapper<Family> familyLqw = new LambdaQueryWrapper<>();
+        familyLqw.eq(Family::getFamilyId, familyId);
+        Family family = familyMapper.selectOne(familyLqw);
+        boolean isCreator = family != null && family.getCreatorId().equals(userId);
+
+        // 权限检查：
+        // 1. 创建者硬编码拥有权限
+        // 2. 管理员需要检查是否有"关怀用户可见性管理"权限
+        // 3. 普通用户和关怀账号不能拥有该权限
+        if (!isCreator) {
+            if (userRole == null || userRole == 2) {
+                // 普通用户无权限
+                return new ResponseVO(FAIL_RES_STATUS, "无权限修改文件可见性");
+            } else if (userRole == 1) {
+                // 管理员需要检查权限
+                if (!permissionService.hasPermission(userId, permissionService.PERMISSION_CARE_VISIBILITY_MANAGE, familyId)) {
+                    return new ResponseVO(FAIL_RES_STATUS, "无权限修改文件可见性，请联系管理员分配权限");
+                }
+            }
+        }
+
+        try {
+            // 查询文件
+            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
+            fileInfoLqw.eq(FileInfo::getFileId, fileId);
+            fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+            fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+            FileInfo dbFile = fileInfoMapper.selectOne(fileInfoLqw);
+
+            if (dbFile == null) {
+                return new ResponseVO(FAIL_RES_STATUS, "文件不存在");
+            }
+
+            // 更新可见性
+            LambdaUpdateWrapper<FileInfo> updateWrapper = new LambdaUpdateWrapper<>();
+            updateWrapper.eq(FileInfo::getFileId, fileId)
+                        .eq(FileInfo::getBelongingHome, familyId)
+                        .set(FileInfo::getVisibleToCare, visibleToCare);
+
+            int result = fileInfoMapper.update(null, updateWrapper);
+
+            if (result <= 0) {
+                return new ResponseVO(FAIL_RES_STATUS, "更新失败");
+            }
+
+            return new ResponseVO(SUCCESS_RES_STATUS, "更新成功");
+        } catch (Exception e) {
+            logger.error("更新文件可见性失败", e);
+            throw new MyException("更新失败", FAIL_RES_CODE);
         }
     }
 }
