@@ -374,4 +374,21 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             throw new MyException("创建文件夹时发生异常", FAIL_RES_CODE);
         }
     }
+
+    /**
+     * 获取家庭空间使用情况
+     */
+    @Override
+    public ResponseVO getFamilySpaceUsage(String userId, String familyId) throws MyException {
+        // 校验用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+        // 获取家庭空间信息
+        RedisUseSpaceDTO spaceDTO = getFamilySpaceInfo(familyId);
+        if (spaceDTO == null) {
+            throw new MyException("家庭不存在", FAIL_RES_CODE);
+        }
+        ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "获取家庭空间使用情况成功");
+        responseVO.setData(spaceDTO);
+        return responseVO;
+    }
 }

@@ -53,4 +53,13 @@ public interface FamilySpaceService {
      * @param familyId 家庭ID
      */
     void refreshFamilySpace(String familyId);
+
+    /**
+     * 获取家庭空间使用情况
+     * @param userId 当前用户ID
+     * @param familyId 家庭ID
+     * @return 空间使用情况（useSpace, totalSpace）
+     * @throws MyException
+     */
+    ResponseVO getFamilySpaceUsage(String userId, String familyId) throws MyException;
 }

@@ -67,6 +67,11 @@ public class FamilySpaceController extends CommonController {
         SessionWebUserDTO userDTO = getUserInfoFromSession(session);
         return familySpaceService.getFamilySpaceUsage(userDTO.getUserId(), familyId);
     }
+
+    /**
+     * 在家庭空间新建文件夹
+     */
+    @RequestMapping("/newFolder")
     @GlobalInteceptor(checkLogin = true)
     public ResponseVO newFolder(
             HttpSession session,
