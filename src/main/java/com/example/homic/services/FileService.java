@@ -38,12 +38,12 @@ public interface FileService {
 
     /**
      * 合并文件
-     * @param uploadDTO
-     * @param filePath
-     * @param userId
+     * @param uploadDTO 上传参数
+     * @param filePath 文件路径
+     * @param userId 用户ID
      * @throws Exception
      */
-    void mergeFile(UploadDTO uploadDTO, String filePath,String userId) throws Exception;
+    void mergeFile(UploadDTO uploadDTO, String filePath, String userId) throws Exception;
 
     /**
      * 获取文件缩略图

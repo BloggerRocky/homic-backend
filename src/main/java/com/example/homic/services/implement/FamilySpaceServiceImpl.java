@@ -24,9 +24,12 @@ import com.example.homic.model.UserInfo;
 import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.FamilySpaceService;
 import com.example.homic.services.PermissionService;
+import com.example.homic.services.AsyncFamilySpaceService;
 import com.example.homic.utils.MinioUtils;
 import com.example.homic.utils.RedisUtils;
 import com.example.homic.utils.StringUtils;
+import com.example.homic.utils.FfmpegUtils;
+import com.example.homic.utils.FileUtils;
 import com.example.homic.vo.*;
 import io.minio.GetObjectResponse;
 import org.modelmapper.ModelMapper;
@@ -40,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -63,8 +67,10 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
     private FamilyMapper familyMapper;
     @Autowired
     private FamilyMemberMapper familyMemberMapper;
-    @Resource
+    @Autowired
     private PermissionService permissionService;
+    @Autowired
+    private AsyncFamilySpaceService asyncFamilySpaceService;
     @Autowired
     private UserInfoMapper userInfoMapper;
     @Autowired
@@ -255,13 +261,8 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
         fileInfo.setLastUpdateTime(date);
         fileInfo.setDelFlag(NORMAL.getFlag());
         fileInfoMapper.insertSelective(fileInfo);
-        // 刷新家庭空间
-        try {
-            refreshFamilySpace(familyId);
-        } catch (Exception e) {
-            logger.error("刷新家庭空间信息失败", e);
-            throw new MyException("刷新家庭空间信息失败", 404);
-        }
+        // 异步更新家庭空间使用大小
+        asyncFamilySpaceService.asyncUpdateFamilySpaceUsage(familyId);
         UploadVO uploadVO = new UploadVO();
         uploadVO.setFileId(fileId);
         uploadVO.setStatus(UPLOAD_SECONDS.getStatus());
@@ -342,12 +343,13 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             fileInfo.setBelongingHome(familyId);
             fileInfo.setVisibleToCare(uploadDTO.getVisibleToCare());
             fileInfo.setDelFlag(NORMAL.getFlag());
+            fileInfo.setBelongingHome(familyId);
             fileInfoMapper.insertSelective(fileInfo);
-            // 刷新家庭空间（而非个人空间）
-            refreshFamilySpace(familyId);
+            // 异步更新家庭空间使用大小，而不是直接刷新
+            asyncFamilySpaceService.asyncUpdateFamilySpaceUsage(familyId);
             // 发送合并任务到RabbitMQ
             String folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
-            MergeMessageDTO mergeMessageDTO = new MergeMessageDTO(uploadDTO, folderPath, userId);
+            MergeMessageDTO mergeMessageDTO = new MergeMessageDTO(uploadDTO, folderPath, userId, familyId);
             String mergeString = JSON.toJSONString(mergeMessageDTO, SerializerFeature.IgnoreErrorGetter);
             rabbitTemplate.convertAndSend(mergeMessageDTO.EXCHANGE_NAME, mergeMessageDTO.ROUTING_KEY, mergeString);
         } catch (Exception e) {
@@ -401,6 +403,8 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             fileInfo.setDelFlag(NORMAL.getFlag());
             fileInfo.setStatus(TRANS_SUCCEED.getStatus());
             fileInfoMapper.insertSelective(fileInfo);
+            // 异步更新家庭空间使用大小
+            asyncFamilySpaceService.asyncUpdateFamilySpaceUsage(familyId);
             return modelMapper.map(fileInfo, FileInfoVO.class);
         } catch (Exception e) {
             logger.error("创建家庭文件夹时发生异常", e);
@@ -465,44 +469,7 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             return responseVO;
         } catch (Exception e) {
             logger.error("获取家庭空间文件夹列表失败", e);
-            throw new MyException("获取文件夹信息失败", FAIL_RES_CODE);
-        }
-    }
-
-    /**
-     * 删除家庭空间文件
-     */
-    @Override
-    @Transactional
-    public ResponseVO deleteFamilyFiles(String fileIds, String userId, String familyId) throws MyException {
-        // 检查删除权限
-        if (!permissionService.canDelete(userId, familyId)) {
-            return new ResponseVO(FAIL_RES_STATUS, "无权限删除文件");
-        }
-
-        // 校验用户是否属于该家庭
-        validateFamilyMember(userId, familyId);
-
-        try {
-            // 将所有待删除文件的状态改成回收站
-            List<String> fileIdsList = List.of(fileIds.split(","));
-            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
-            fileInfoLqw.in(FileInfo::getFileId, fileIdsList);
-            fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
-            fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
-
-            FileInfo fileInfo = new FileInfo();
-            fileInfo.setRecoveryTime(new Date());
-            fileInfo.setDelFlag(RECYCLE.getFlag());
-            fileInfoMapper.update(fileInfo, fileInfoLqw);
-
-            // 刷新家庭空间使用量
-            refreshFamilySpace(familyId);
-
-            return new ResponseVO(SUCCESS_RES_STATUS, "文件删除成功");
-        } catch (Exception e) {
-            logger.error("删除家庭空间文件失败", e);
-            throw new MyException("删除文件失败", FAIL_RES_CODE);
+            return new ResponseVO(FAIL_RES_STATUS, "获取文件夹列表失败");
         }
     }
 
@@ -528,17 +495,24 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
         FileInfo dbFile = fileInfoMapper.selectOne(fileInfoLqw);
 
         if (dbFile == null) {
-            throw new MyException("文件不存在", FAIL_RES_CODE);
+            return new ResponseVO(FAIL_RES_STATUS, "文件不存在");
         }
 
         // 检查文件名是否包含斜杠
         if (fileName.contains("/")) {
-            throw new MyException("文件名不能包含斜杠", FAIL_RES_CODE);
+            return new ResponseVO(FAIL_RES_STATUS, "文件名不能包含斜杠");
         }
 
-        // 获取原始文件名后缀
-        String suffix = dbFile.getFileName().substring(dbFile.getFileName().lastIndexOf("."));
-        String newFileName = fileName + suffix;
+        // 对于文件，保留原始后缀；对于文件夹，直接使用新名称
+        String newFileName = fileName;
+        if (dbFile.getFolderType() == FOLDER_TYPE_FILE) {
+            String originalFileName = dbFile.getFileName();
+            int lastDotIndex = originalFileName.lastIndexOf(".");
+            if (lastDotIndex > 0) {
+                String suffix = originalFileName.substring(lastDotIndex);
+                newFileName = fileName + suffix;
+            }
+        }
 
         // 检查是否有同名文件
         LambdaQueryWrapper<FileInfo> checkLqw = new LambdaQueryWrapper<>();
@@ -549,21 +523,26 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
         checkLqw.ne(FileInfo::getFileId, fileId);
 
         if (fileInfoMapper.selectCount(checkLqw) > 0) {
-            throw new MyException("该目录下已存在同名文件", FAIL_RES_CODE);
+            return new ResponseVO(FAIL_RES_STATUS, "该目录下已存在同名文件");
         }
 
-        // 更新文件名
-        FileInfo updateInfo = new FileInfo();
-        updateInfo.setFileName(newFileName);
-        updateInfo.setLastUpdateTime(new Date());
-        fileInfoMapper.update(updateInfo, fileInfoLqw);
+        try {
+            // 更新文件名
+            FileInfo updateInfo = new FileInfo();
+            updateInfo.setFileName(newFileName);
+            updateInfo.setLastUpdateTime(new Date());
+            fileInfoMapper.update(updateInfo, fileInfoLqw);
 
-        // 返回更新后的文件信息
-        dbFile.setFileName(newFileName);
-        FileInfoVO fileInfoVO = modelMapper.map(dbFile, FileInfoVO.class);
-        ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "重命名成功");
-        responseVO.setData(fileInfoVO);
-        return responseVO;
+            // 返回更新后的文件信息
+            dbFile.setFileName(newFileName);
+            FileInfoVO fileInfoVO = modelMapper.map(dbFile, FileInfoVO.class);
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "重命名成功");
+            responseVO.setData(fileInfoVO);
+            return responseVO;
+        } catch (Exception e) {
+            logger.error("重命名家庭文件失败", e);
+            throw new MyException("重命名失败", FAIL_RES_CODE);
+        }
     }
 
     /**
@@ -700,6 +679,79 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
         } catch (Exception e) {
             logger.error("更新文件可见性失败", e);
             throw new MyException("更新失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 删除家庭文件（物理删除）
+     */
+    @Override
+    @Transactional
+    public ResponseVO deleteFamilyFiles(String fileIds, String userId, String familyId) throws MyException {
+        // 检查删除权限
+        if (!permissionService.canDelete(userId, familyId)) {
+            return new ResponseVO(FAIL_RES_STATUS, "无权限删除文件");
+        }
+
+        // 校验用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+
+        try {
+            List<String> fileIdList = List.of(fileIds.split(","));
+            deleteFamilyTotalFile(fileIdList, familyId);
+            // 异步更新家庭空间使用大小
+            asyncFamilySpaceService.asyncUpdateFamilySpaceUsage(familyId);
+            return new ResponseVO(SUCCESS_RES_STATUS, "删除成功");
+        } catch (Exception e) {
+            logger.error("删除家庭文件失败", e);
+            throw new MyException("删除文件失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 物理删除家庭文件和它们的子文件
+     */
+    @Transactional
+    void deleteFamilyTotalFile(List<String> fileIdsList, String familyId) throws Exception {
+        // 获取当前文件信息
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
+        fileInfoLqw.in(FileInfo::getFileId, fileIdsList);
+        fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+        List<FileInfo> fileInfos = fileInfoMapper.selectList(fileInfoLqw);
+
+        // 查询出当前文件信息后就可以直接删除数据库记录
+        fileInfoMapper.delete(fileInfoLqw);
+        List<String> subFileIds = new ArrayList<>();
+
+        for (FileInfo info : fileInfos) {
+            // 【1】 对于文件，如果没有其他文件引用相同的实体文件，删除对应的实体文件
+            if (info.getFolderType() == FOLDER_TYPE_FILE) {
+                String md5 = info.getFileMd5();
+                LambdaQueryWrapper<FileInfo> fileInfoLqw2 = new LambdaQueryWrapper<>();
+                fileInfoLqw2.eq(FileInfo::getFileMd5, md5);
+                // 查询相同md5值的文件数量为0，删除实体文件
+                if (fileInfoMapper.selectCount(fileInfoLqw2) == 0) {
+                    String folderPath = info.getFilePath().substring(0, info.getFilePath().lastIndexOf("/"));
+                    minioUtils.deleteFolder(folderPath);
+                }
+            }
+            // 【2】 对于文件夹，将子文件加入待删除列表
+            if (info.getFolderType() == FOLDER_TYPE_FOLDER) {
+                // 查询该文件夹的子文件
+                LambdaQueryWrapper<FileInfo> fileInfoLqw3 = new LambdaQueryWrapper<>();
+                fileInfoLqw3.eq(FileInfo::getFilePid, info.getFileId());
+                fileInfoLqw3.eq(FileInfo::getBelongingHome, familyId);
+                List<FileInfo> subFileInfos = fileInfoMapper.selectList(fileInfoLqw3);
+                // 将子文件id加入待删除列表
+                for (FileInfo subInfo : subFileInfos) {
+                    subFileIds.add(subInfo.getFileId());
+                }
+            }
+        }
+
+        // 如果这些文件还有子文件，递归执行删除
+        if (subFileIds.size() > 0) {
+            deleteFamilyTotalFile(subFileIds, familyId);
         }
     }
 }

@@ -19,6 +19,7 @@ public class MergeMessageDTO implements  Serializable{
     private UploadDTO uploadDTO;
     private String filePath;
     private String userId;
+    private String familyId; // 家庭ID，null表示个人空间文件
     @JSONField(serialize =false)
     public static final String EXCHANGE_NAME = "merge_exchange";//交换机名称
     @JSONField(serialize =false)
@@ -48,10 +49,26 @@ public class MergeMessageDTO implements  Serializable{
         this.userId = userId;
     }
 
+    public String getFamilyId() {
+        return familyId;
+    }
+
+    public void setFamilyId(String familyId) {
+        this.familyId = familyId;
+    }
+
     public MergeMessageDTO(UploadDTO uploadDTO, String filePath, String userId) {
         this.uploadDTO = uploadDTO;
         this.filePath = filePath;
         this.userId = userId;
+        this.familyId = null; // 默认为个人空间
+    }
+
+    public MergeMessageDTO(UploadDTO uploadDTO, String filePath, String userId, String familyId) {
+        this.uploadDTO = uploadDTO;
+        this.filePath = filePath;
+        this.userId = userId;
+        this.familyId = familyId;
     }
 
     public MergeMessageDTO() {

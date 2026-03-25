@@ -3,6 +3,7 @@ package com.example.homic.services.implement;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.homic.config.properties.AppProperties;
@@ -276,7 +277,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             refreshUseSpace(userId);
             //指定RabbitMQ交换机发送对应路由键的mergeFile任务，发送前将mergeFile()所需参数的包装类封装成字符串发送
             String folderPath = filePath.substring(0,filePath.lastIndexOf("/"));
-            MergeMessageDTO mergeMessageDTO = new MergeMessageDTO(uploadDTO, folderPath, userId);
+            MergeMessageDTO mergeMessageDTO = new MergeMessageDTO(uploadDTO, folderPath, userId, null); // 个人空间familyId为null
             String mergeString = JSON.toJSONString(mergeMessageDTO, SerializerFeature.IgnoreErrorGetter);
             rabbitTemplate.convertAndSend(mergeMessageDTO.EXCHANGE_NAME,mergeMessageDTO.ROUTING_KEY,mergeString);
         } catch (Exception e) {
@@ -353,15 +354,23 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             else {
                 minioUtils.saveFile(minioFolderPath+"/"+uploadDTO.getFileName(),mergeFile);
             }
-            fileInfo.setStatus(TRANS_SUCCEED.getStatus());
-            fileInfoMapper.updateByPrimaryKeySelective(fileInfo);
+
+            // 更新文件状态为转码成功
+            LambdaUpdateWrapper<FileInfo> updateWrapper = new LambdaUpdateWrapper<>();
+            updateWrapper.eq(FileInfo::getFileId, uploadDTO.getFileId());
+
+            updateWrapper.set(FileInfo::getStatus, TRANS_SUCCEED.getStatus());
+            fileInfoMapper.update(null, updateWrapper);
         }
         catch (Exception e)
         {
             logger.error("文件转码失败",e);
             //转码失败，更新数据库状态
-            fileInfo.setStatus(TRANS_FAILED.getStatus());
-            fileInfoMapper.updateByPrimaryKeySelective(fileInfo);
+            LambdaUpdateWrapper<FileInfo> updateWrapper = new LambdaUpdateWrapper<>();
+            updateWrapper.eq(FileInfo::getFileId, uploadDTO.getFileId());
+
+            updateWrapper.set(FileInfo::getStatus, TRANS_FAILED.getStatus());
+            fileInfoMapper.update(null, updateWrapper);
             throw new MyException("文件转码失败",FAIL_RES_CODE);
         }finally {
             //删除服务器本地文件和MinIO临时分片文件

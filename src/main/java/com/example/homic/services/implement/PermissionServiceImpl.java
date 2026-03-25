@@ -1,6 +1,7 @@
 package com.example.homic.services.implement;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.homic.mapper.FamilyMapper;
 import com.example.homic.mapper.FamilyMemberMapper;
 import com.example.homic.mapper.PermissionMapper;
 import com.example.homic.model.Permission;
@@ -22,6 +23,9 @@ public class PermissionServiceImpl implements PermissionService {
     @Autowired
     private FamilyMemberMapper familyMemberMapper;
 
+    @Autowired
+    private FamilyMapper familyMapper;
+
     @Override
     public boolean hasPermission(String userId, String permissionKey, String objectId) {
         // 如果是创建者，强制拥有所有权限
@@ -42,7 +46,7 @@ public class PermissionServiceImpl implements PermissionService {
     public boolean setPermission(String userId, String permissionKey, int permissionValue, String objectId) {
         // 先查询是否已存在
         Permission existing = permissionMapper.selectByUserKeyAndObject(userId, permissionKey, objectId);
-        
+
         if (existing != null) {
             // 更新
             existing.setPermissionValue(permissionValue);
@@ -75,7 +79,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public void initDefaultPermissions(String userId, String objectId, int role) {
         Date now = new Date();
-        
+
         // 创建者强制拥有所有权限
         if (role == 0) {
             setPermission(userId, PERMISSION_UPLOAD, 1, objectId);
@@ -105,16 +109,38 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean canUpload(String userId, String familyId) {
+        // 创建者硬编码拥有权限
+        if (isCreator(userId, familyId)) {
+            return true;
+        }
         return hasPermission(userId, PERMISSION_UPLOAD, familyId);
     }
 
     @Override
     public boolean canModify(String userId, String familyId) {
+        // 创建者硬编码拥有权限
+        if (isCreator(userId, familyId)) {
+            return true;
+        }
         return hasPermission(userId, PERMISSION_MODIFY, familyId);
     }
 
     @Override
     public boolean canDelete(String userId, String familyId) {
+        // 创建者硬编码拥有权限
+        if (isCreator(userId, familyId)) {
+            return true;
+        }
         return hasPermission(userId, PERMISSION_DELETE, familyId);
+    }
+
+    /**
+     * 检查用户是否为家庭创建者
+     */
+    private boolean isCreator(String userId, String familyId) {
+        LambdaQueryWrapper<com.example.homic.model.Family> familyLqw = new LambdaQueryWrapper<>();
+        familyLqw.eq(com.example.homic.model.Family::getFamilyId, familyId);
+        com.example.homic.model.Family family = familyMapper.selectOne(familyLqw);
+        return family != null && family.getCreatorId().equals(userId);
     }
 }
