@@ -39,7 +39,6 @@ public class FileInfo extends FileInfoKey implements Serializable {
 
     private String belongingHome;
 
-    @TableField("visible_to_care")
     private Integer visibleToCare;
 
     //默认不查询

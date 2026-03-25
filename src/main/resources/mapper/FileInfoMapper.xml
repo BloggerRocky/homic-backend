@@ -19,11 +19,12 @@
     <result column="recovery_time" jdbcType="TIMESTAMP" property="recoveryTime" />
     <result column="del_flag" jdbcType="INTEGER" property="delFlag" />
     <result column="belonging_home" jdbcType="VARCHAR" property="belongingHome" />
+    <result column="visible_to_care" jdbcType="INTEGER" property="visibleToCare" />
   </resultMap>
   <sql id="Base_Column_List">
     file_id, user_id, file_md5, file_pid, file_size, file_name, file_cover, file_path,
     create_time, last_update_time, folder_type, file_category, file_type, status, recovery_time,
-    del_flag, belonging_home
+    del_flag, belonging_home, visible_to_care
   </sql>
   <select id="selectByPrimaryKey" parameterType="com.example.homic.model.file.FileInfoKey" resultMap="BaseResultMap">
     select
@@ -38,6 +39,7 @@
     sum(file_size)
     from file_info
     where user_id = #{userId,jdbcType=VARCHAR}
+    and (belonging_home IS NULL OR belonging_home = '')
   </select>
   <!--根据belonging_home计算该家庭使用的总空间-->
   <select id="getSizeByFamilyId" parameterType="java.lang.String" resultType="java.lang.Long">
@@ -65,13 +67,13 @@
       file_cover, file_path, create_time,
       last_update_time, folder_type, file_category,
       file_type, status, recovery_time,
-      del_flag, belonging_home)
+      del_flag, belonging_home, visible_to_care)
     values (#{fileId,jdbcType=VARCHAR}, #{userId,jdbcType=VARCHAR}, #{fileMd5,jdbcType=VARCHAR},
       #{filePid,jdbcType=VARCHAR}, #{fileSize,jdbcType=BIGINT}, #{fileName,jdbcType=VARCHAR},
       #{fileCover,jdbcType=VARCHAR}, #{filePath,jdbcType=VARCHAR}, #{createTime,jdbcType=TIMESTAMP},
       #{lastUpdateTime,jdbcType=TIMESTAMP}, #{folderType,jdbcType=INTEGER}, #{fileCategory,jdbcType=INTEGER},
       #{fileType,jdbcType=INTEGER}, #{status,jdbcType=INTEGER}, #{recoveryTime,jdbcType=TIMESTAMP},
-      #{delFlag,jdbcType=INTEGER}, #{belongingHome,jdbcType=VARCHAR})
+      #{delFlag,jdbcType=INTEGER}, #{belongingHome,jdbcType=VARCHAR}, #{visibleToCare,jdbcType=INTEGER})
   </insert>
   <insert id="insertSelective" parameterType="com.example.homic.model.file.FileInfo">
     insert into file_info
@@ -127,6 +129,9 @@
       <if test="belongingHome != null">
         belonging_home,
       </if>
+      <if test="visibleToCare != null">
+        visible_to_care,
+      </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="fileId != null">
@@ -180,6 +185,9 @@
       <if test="belongingHome != null">
         #{belongingHome,jdbcType=VARCHAR},
       </if>
+      <if test="visibleToCare != null">
+        #{visibleToCare,jdbcType=INTEGER},
+      </if>
     </trim>
   </insert>
   <update id="updateByPrimaryKeySelective" parameterType="com.example.homic.model.file.FileInfo">
@@ -230,6 +238,9 @@
       <if test="belongingHome != null">
         belonging_home = #{belongingHome,jdbcType=VARCHAR},
       </if>
+      <if test="visibleToCare != null">
+        visible_to_care = #{visibleToCare,jdbcType=INTEGER},
+      </if>
     </set>
     where file_id = #{fileId,jdbcType=VARCHAR}
       and user_id = #{userId,jdbcType=VARCHAR}
@@ -250,7 +261,8 @@
       status = #{status,jdbcType=INTEGER},
       recovery_time = #{recoveryTime,jdbcType=TIMESTAMP},
       del_flag = #{delFlag,jdbcType=INTEGER},
-      belonging_home = #{belongingHome,jdbcType=VARCHAR}
+      belonging_home = #{belongingHome,jdbcType=VARCHAR},
+      visible_to_care = #{visibleToCare,jdbcType=INTEGER}
     where file_id = #{fileId,jdbcType=VARCHAR}
       and user_id = #{userId,jdbcType=VARCHAR}
   </update>

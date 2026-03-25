@@ -5,8 +5,12 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.homic.exception.MyException;
 import com.example.homic.mapper.FileInfoMapper;
+import com.example.homic.mapper.FamilyMemberMapper;
+import com.example.homic.mapper.UserInfoMapper;
+import com.example.homic.model.UserInfo;
 import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.ManageService;
+import com.example.homic.services.AsyncFamilySpaceService;
 import com.example.homic.utils.MinioUtils;
 import com.example.homic.utils.StringUtils;
 import com.example.homic.vo.FileInfoVO;
@@ -44,6 +48,12 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     ModelMapper modelMapper;
     @Autowired
     MinioUtils minioUtils;
+    @Autowired
+    FamilyMemberMapper familyMemberMapper;
+    @Autowired
+    UserInfoMapper userInfoMapper;
+    @Autowired
+    AsyncFamilySpaceService asyncFamilySpaceService;
     private static Logger logger = LoggerFactory.getLogger(ManageServiceImpl.class);
 
     /**
@@ -224,6 +234,10 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
         fileInfo.setDelFlag(RECYCLE.getFlag());
         try {
             fileInfoMapper.update(fileInfo, fileInfoLqw);
+
+            // 异步更新个人空间使用大小
+            asyncFamilySpaceService.asyncUpdatePersonalSpaceUsage(userId);
+
         } catch (Exception e) {
             logger.error("数据库异常", e);
             throw new MyException("删除文件失败", FAIL_RES_CODE);
@@ -293,6 +307,10 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
                 throw new MyException("恢复文件失败", FAIL_RES_CODE);
             }
         }
+
+        // 异步更新个人空间使用大小
+        asyncFamilySpaceService.asyncUpdatePersonalSpaceUsage(userId);
+
         return true;
     }
 
@@ -325,7 +343,8 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
     public boolean smashFile(List<String> fileIds, String userId) throws Exception {
         try{
             deleteTotalFile(fileIds,userId);
-            refreshUseSpace(userId);
+            // 异步更新个人空间使用大小，而不是直接刷新
+            asyncFamilySpaceService.asyncUpdatePersonalSpaceUsage(userId);
         }catch (Exception e)
         {
             logger.error("数据库异常", e);
@@ -373,5 +392,109 @@ public class ManageServiceImpl extends CommonServiceImpl implements ManageServic
                 deleteTotalFile(subFileIds, userId);
         }
 
+    }
+
+    /**
+     * 同步个人空间文件到家庭空间
+     * @param fileIds
+     * @param familyId
+     * @param userId
+     * @return
+     */
+    @Override
+    @Transactional
+    public boolean syncFilesToFamily(String fileIds, String familyId, String userId) throws Exception {
+        try {
+            // 1. 验证用户是否属于该家庭
+            LambdaQueryWrapper<com.example.homic.model.FamilyMember> memberLqw = new LambdaQueryWrapper<>();
+            memberLqw.eq(com.example.homic.model.FamilyMember::getUserId, userId);
+            memberLqw.eq(com.example.homic.model.FamilyMember::getFamilyId, familyId);
+            com.example.homic.model.FamilyMember member = familyMemberMapper.selectOne(memberLqw);
+            if (member == null) {
+                throw new MyException("您不属于该家庭", FAIL_RES_CODE);
+            }
+
+            // 2. 获取用户信息，判断是否为关怀用户
+            UserInfo userInfo = userInfoMapper.selectById(userId);
+            boolean isCareUser = userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1;
+
+            String[] fileIdArray = fileIds.split(",");
+            List<String> successFileIds = new ArrayList<>();
+
+            for (String fileId : fileIdArray) {
+                try {
+                    // 3. 查询个人空间文件
+                    LambdaQueryWrapper<FileInfo> fileLqw = new LambdaQueryWrapper<>();
+                    fileLqw.eq(FileInfo::getFileId, fileId);
+                    fileLqw.eq(FileInfo::getUserId, userId);
+                    fileLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+                    fileLqw.eq(FileInfo::getFolderType, FOLDER_TYPE_FILE); // 只支持文件同步，不支持文件夹
+                    fileLqw.and(wrapper -> wrapper.isNull(FileInfo::getBelongingHome).or().eq(FileInfo::getBelongingHome, "")); // 个人空间文件
+                    FileInfo originalFile = fileInfoMapper.selectOne(fileLqw);
+
+                    if (originalFile == null) {
+                        logger.warn("文件不存在或不是文件类型: {}", fileId);
+                        continue;
+                    }
+
+                    // 4. 检查目标家庭空间是否已存在同名文件
+                    LambdaQueryWrapper<FileInfo> existFileLqw = new LambdaQueryWrapper<>();
+                    existFileLqw.eq(FileInfo::getFileName, originalFile.getFileName());
+                    existFileLqw.eq(FileInfo::getFilePid, "0"); // 根目录
+                    existFileLqw.eq(FileInfo::getBelongingHome, familyId);
+                    existFileLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+                    if (fileInfoMapper.selectCount(existFileLqw) > 0) {
+                        logger.warn("家庭空间已存在同名文件: {}", originalFile.getFileName());
+                        continue;
+                    }
+
+                    // 5. 创建家庭空间文件副本
+                    FileInfo familyFile = new FileInfo();
+                    familyFile.setFileId(StringUtils.getSerialNumber(15));
+                    familyFile.setUserId(userId);
+                    familyFile.setFileMd5(originalFile.getFileMd5());
+                    familyFile.setFilePid("0"); // 默认放在根目录
+                    familyFile.setFileName(originalFile.getFileName());
+                    familyFile.setFileSize(originalFile.getFileSize());
+                    familyFile.setFileCover(originalFile.getFileCover());
+                    familyFile.setFilePath(originalFile.getFilePath());
+                    familyFile.setCreateTime(new Date());
+                    familyFile.setLastUpdateTime(new Date());
+                    familyFile.setFolderType(originalFile.getFolderType());
+                    familyFile.setFileCategory(originalFile.getFileCategory());
+                    familyFile.setFileType(originalFile.getFileType());
+                    familyFile.setStatus(originalFile.getStatus());
+                    familyFile.setDelFlag(NORMAL.getFlag());
+                    familyFile.setBelongingHome(familyId);
+
+                    // 关怀用户同步过来的文件默认对关怀用户可见
+                    if (isCareUser) {
+                        familyFile.setVisibleToCare(1);
+                    } else {
+                        familyFile.setVisibleToCare(0);
+                    }
+
+                    fileInfoMapper.insert(familyFile);
+                    successFileIds.add(familyFile.getFileId());
+                    logger.info("文件同步成功: {} -> {}", fileId, familyFile.getFileId());
+
+                } catch (Exception e) {
+                    logger.error("同步文件失败: {}", fileId, e);
+                    // 继续处理其他文件，不中断整个同步过程
+                }
+            }
+
+            // 6. 异步更新家庭空间使用大小
+            if (!successFileIds.isEmpty()) {
+                asyncFamilySpaceService.asyncUpdateFamilySpaceUsage(familyId);
+            }
+
+            return !successFileIds.isEmpty();
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("同步文件到家庭空间失败", e);
+            throw new MyException("同步文件失败", FAIL_RES_CODE);
+        }
     }
 }

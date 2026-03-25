@@ -332,6 +332,11 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             fileInfo.setFilePid(uploadDTO.getFilePid());
             fileInfo.setFileName(fileName);
             fileInfo.setFileSize(fileSize);
+            // 获取用户信息，判断是否为关怀用户
+            UserInfo userInfo = userInfoMapper.selectById(userId);
+            boolean isCareUser = userInfo != null && userInfo.getIsDummy() != null && userInfo.getIsDummy() == 1;
+            // 关怀用户创建的文件夹默认对关怀用户可见
+            fileInfo.setVisibleToCare(isCareUser ? 1 : 0);
             fileInfo.setFilePath(filePath);
             fileInfo.setFileCover(coverPath);
             fileInfo.setCreateTime(date);

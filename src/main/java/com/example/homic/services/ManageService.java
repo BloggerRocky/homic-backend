@@ -103,4 +103,14 @@ public interface ManageService {
      * @throws Exception
      */
     boolean smashFile(List<String> fileIds, String userId) throws Exception;
+
+    /**
+     * 同步个人空间文件到家庭空间
+     * @param fileIds
+     * @param familyId
+     * @param userId
+     * @return
+     * @throws Exception
+     */
+    boolean syncFilesToFamily(String fileIds, String familyId, String userId) throws Exception;
 }

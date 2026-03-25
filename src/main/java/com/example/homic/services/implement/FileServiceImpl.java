@@ -19,6 +19,7 @@ import com.example.homic.mapper.FamilyMemberMapper;
 import com.example.homic.mapper.UserInfoMapper;
 import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.FileService;
+import com.example.homic.services.AsyncFamilySpaceService;
 import com.example.homic.utils.*;
 import com.example.homic.vo.*;
 import io.minio.GetObjectResponse;
@@ -69,6 +70,8 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
     MinioUtils minioUtils;
     @Autowired
     RabbitTemplate rabbitTemplate;
+    @Autowired
+    AsyncFamilySpaceService asyncFamilySpaceService;
     @Override
     public ResponseVO loadDataList(QueryInfoDTO queryInfoDTO) {
         LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
@@ -178,14 +181,9 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
                 fileInfo.setLastUpdateTime(date);
                 fileInfo.setDelFlag(NORMAL.getFlag());
                 fileInfoMapper.insertSelective(fileInfo);
-                //刷新内存信息
-                try {
-                    refreshUseSpace(userId);
-                } catch (Exception e) {
-                    logger.error("刷新内存信息失败",e);
-                    throw new MyException("刷新内存信息失败",404);
-                }
-                //返回秒传信息
+            // 异步更新个人空间使用大小，而不是直接刷新
+            asyncFamilySpaceService.asyncUpdatePersonalSpaceUsage(userId);
+            //返回秒传信息
                 UploadVO uploadVO = new UploadVO();
                 uploadVO.setFileId(fileId);
                 uploadVO.setStatus(UPLOAD_SECONDS.getStatus());
@@ -273,8 +271,8 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             fileInfo.setFileCategory(fileCategory);
             fileInfo.setDelFlag(NORMAL.getFlag());//默认正常
             fileInfoMapper.insertSelective(fileInfo);
-            //刷新内存信息
-            refreshUseSpace(userId);
+            // 异步更新个人空间使用大小，而不是直接刷新
+            asyncFamilySpaceService.asyncUpdatePersonalSpaceUsage(userId);
             //指定RabbitMQ交换机发送对应路由键的mergeFile任务，发送前将mergeFile()所需参数的包装类封装成字符串发送
             String folderPath = filePath.substring(0,filePath.lastIndexOf("/"));
             MergeMessageDTO mergeMessageDTO = new MergeMessageDTO(uploadDTO, folderPath, userId, null); // 个人空间familyId为null

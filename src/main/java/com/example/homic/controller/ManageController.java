@@ -139,4 +139,19 @@ public class ManageController extends CommonController{
         manageService.smashFile(fileIdsList,userId);
         return  new ResponseVO(SUCCESS_RES_STATUS,"彻底删除文件成功");
     }
+
+    @RequestMapping("/file/syncToFamily")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO syncFilesToFamily(
+            HttpSession session,
+            String fileIds,
+            String familyId
+    ) throws Exception {
+        String userId = getUserIdBySession(session);
+        boolean success = manageService.syncFilesToFamily(fileIds, familyId, userId);
+        ResponseVO responseVO = success 
+            ? new ResponseVO(SUCCESS_RES_STATUS, "同步成功") 
+            : new ResponseVO(FAIL_RES_STATUS, "同步失败，没有文件可同步");
+        return responseVO;
+    }
 }
