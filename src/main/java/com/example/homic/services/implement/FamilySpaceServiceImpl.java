@@ -391,4 +391,34 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
         responseVO.setData(spaceDTO);
         return responseVO;
     }
+
+    /**
+     * 加载家庭空间所有文件夹（用于移动功能）
+     */
+    @Override
+    public ResponseVO loadAllFolder(String filePid, String currentFileIds, String userId, String familyId) throws MyException {
+        // 校验用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+        
+        // 查询当前目录中fileId不在当前多个文件id中的目录
+        String[] idArray = currentFileIds.split(",");
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
+        fileInfoLqw.eq(FileInfo::getFilePid, filePid);
+        fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+        fileInfoLqw.eq(FileInfo::getFolderType, FOLDER_TYPE_FOLDER);
+        fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+        fileInfoLqw.notIn(FileInfo::getFileId, idArray);
+        
+        try {
+            List<FileInfo> fileInfos = fileInfoMapper.selectList(fileInfoLqw);
+            List<FileInfoVO> fileInfoVOs = fileInfos.stream()
+                    .map(fileInfo -> modelMapper.map(fileInfo, FileInfoVO.class))
+                    .collect(Collectors.toList());
+            ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "获取文件夹列表成功");
+            responseVO.setData(fileInfoVOs);
+            return responseVO;
+        } catch (Exception e) {
+            throw new MyException("获取文件夹信息失败", FAIL_RES_CODE);
+        }
+    }
 }

@@ -471,7 +471,7 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             LambdaQueryWrapper<com.example.homic.model.FamilyMember> memberLqw = new LambdaQueryWrapper<>();
             memberLqw.eq(com.example.homic.model.FamilyMember::getFamilyId, fileInfo.getBelongingHome());
             memberLqw.eq(com.example.homic.model.FamilyMember::getUserId, userId);
-            Long count = familyMemberMapper.selectCount(memberLqw);
+            Integer count = familyMemberMapper.selectCount(memberLqw);
             if (count == 0) {
                 throw new MyException("无权限访问该文件", FAIL_RES_CODE);
             }

@@ -62,4 +62,15 @@ public interface FamilySpaceService {
      * @throws MyException
      */
     ResponseVO getFamilySpaceUsage(String userId, String familyId) throws MyException;
+
+    /**
+     * 加载家庭空间所有文件夹（用于移动功能）
+     * @param filePid 父文件夹ID
+     * @param currentFileIds 当前文件ID（需要排除的）
+     * @param userId 当前用户ID
+     * @param familyId 家庭ID
+     * @return 文件夹列表
+     * @throws MyException
+     */
+    ResponseVO loadAllFolder(String filePid, String currentFileIds, String userId, String familyId) throws MyException;
 }

@@ -69,6 +69,20 @@ public class FamilySpaceController extends CommonController {
     }
 
     /**
+     * 加载家庭空间所有文件夹（用于移动功能）
+     */
+    @RequestMapping("/loadAllFolder")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO loadAllFolder(
+            HttpSession session,
+            String filePid,
+            String currentFileIds,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familySpaceService.loadAllFolder(filePid, currentFileIds, userDTO.getUserId(), familyId);
+    }
+
+    /**
      * 在家庭空间新建文件夹
      */
     @RequestMapping("/newFolder")
