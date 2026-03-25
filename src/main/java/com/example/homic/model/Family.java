@@ -17,6 +17,8 @@ public class Family implements Serializable {
     private String familyAvatar;
     private String familyCode;
     private String creatorId;
+    private Long useSpace;
+    private Long totalSpace;
     private Date createTime;
     private Date updateTime;
 }

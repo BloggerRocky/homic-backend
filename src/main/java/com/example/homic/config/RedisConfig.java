@@ -17,6 +17,7 @@ public class RedisConfig {
         // 创建RedisTemplate对象
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         // 设置连接工厂
+
         template.setConnectionFactory(connectionFactory);
         // 创建JSON序列化工具
         GenericJackson2JsonRedisSerializer jsonRedisSerializer =

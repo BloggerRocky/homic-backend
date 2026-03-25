@@ -38,6 +38,7 @@ CREATE TABLE `file_info`  (
   `status` int NULL DEFAULT 2 COMMENT '文件状态：0：转码中，1：转码失败 ，2：转码成功',
   `recovery_time` datetime NULL DEFAULT NULL COMMENT '文件进入回收站的时间',
   `del_flag` int NOT NULL COMMENT '删除标记：0：删除，1：回收站，2：正常',
+  `belonging_home` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '所属家庭ID：NULL表示个人文件，非NULL表示家庭文件',
   PRIMARY KEY (`file_id`, `user_id`) USING BTREE,
   UNIQUE INDEX `idx_main_key`(`file_id` ASC, `user_id` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE,
@@ -115,3 +116,15 @@ INSERT INTO `user_info` VALUES ('sj7dSkDf85ug9So', 'Rocky23318', '3169632223@qq.
 INSERT INTO `user_info` VALUES ('VS32nY4jrNGycc5', 'LuoShuang', '3378199813@qq.com', NULL, 'VS32nY4jrNGycc5.jpg', '1c117de4467fb3221c9f3f5ea7d726e9', '2024-07-14 09:04:24', '2024-07-15 15:53:06', 1, 0, 1073741824, 0);
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ----------------------------
+-- 增量更新：为已有数据库添加 belonging_home 字段
+-- ----------------------------
+-- ALTER TABLE `file_info` ADD COLUMN `belonging_home` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '所属家庭ID：NULL表示个人文件，非NULL表示家庭文件' AFTER `del_flag`;
+-- ALTER TABLE `file_info` ADD INDEX `idx_belonging_home`(`belonging_home` ASC) USING BTREE;
+
+-- ----------------------------
+-- 增量更新：为 family 表添加空间管理字段
+-- ----------------------------
+-- ALTER TABLE `family` ADD COLUMN `use_space` BIGINT NOT NULL DEFAULT 0 COMMENT '已用空间（单位Byte）' AFTER `creator_id`;
+-- ALTER TABLE `family` ADD COLUMN `total_space` BIGINT NOT NULL DEFAULT 1073741824 COMMENT '总空间（单位Byte，默认1GB）' AFTER `use_space`;

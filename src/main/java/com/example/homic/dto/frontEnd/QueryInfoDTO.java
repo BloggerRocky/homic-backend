@@ -19,4 +19,6 @@ public class QueryInfoDTO {
     private String filePid;//父文件夹ID
     private Integer delFlag = 2;//查询状态默认只查询正常文件
     private boolean queryNickName = false;
+    private String belongingHome;//所属家庭ID，null表示查个人文件
+    private boolean filterPersonal = false;//为true时仅查个人文件（belongingHome为null的）
 }

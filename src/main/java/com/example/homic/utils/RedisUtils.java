@@ -33,6 +33,13 @@ public class RedisUtils {
     }
 
     /**
+     * 生成家庭空间 key
+     */
+    public static String getFamilySpaceKey(String familyId) {
+        return buildKey("family:space", familyId);
+    }
+
+    /**
      * 生成邮箱验证码 key
      */
     public static String getEmailCodeKey(String prefix, String email) {

@@ -36,6 +36,8 @@ public class FileInfo extends FileInfoKey implements Serializable {
     private Date recoveryTime;
 
     private Integer delFlag;
+
+    private String belongingHome;
     //默认不查询
     @TableField(exist = false)
     private String nickName;
@@ -159,5 +161,13 @@ public class FileInfo extends FileInfoKey implements Serializable {
 
     public void setDelFlag(Integer delFlag) {
         this.delFlag = delFlag;
+    }
+
+    public String getBelongingHome() {
+        return belongingHome;
+    }
+
+    public void setBelongingHome(String belongingHome) {
+        this.belongingHome = belongingHome == null ? null : belongingHome.trim();
     }
 }

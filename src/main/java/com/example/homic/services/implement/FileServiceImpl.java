@@ -14,6 +14,7 @@ import com.example.homic.dto.redis.RedisUseSpaceDTO;
 import com.example.homic.dto.frontEnd.UploadDTO;
 import com.example.homic.exception.MyException;
 import com.example.homic.mapper.FileInfoMapper;
+import com.example.homic.mapper.FamilyMemberMapper;
 import com.example.homic.mapper.UserInfoMapper;
 import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.FileService;
@@ -60,6 +61,8 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
     @Autowired
     FileInfoMapper fileInfoMapper;
     @Autowired
+    FamilyMemberMapper familyMemberMapper;
+    @Autowired
     ModelMapper modelMapper;
     @Autowired
     MinioUtils minioUtils;
@@ -90,6 +93,12 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
             fileInfoLqw.like(FileInfo::getFileName,queryInfoDTO.getFileNameFuzzy());//模糊查询文件名
         if(queryInfoDTO.getDelFlag() != -1)
             fileInfoLqw.eq(FileInfo::getDelFlag,queryInfoDTO.getDelFlag());//查询对应状态文件，其中-1表示不进行筛选
+        // 区分个人文件和家庭文件
+        if(queryInfoDTO.isFilterPersonal()) {
+            fileInfoLqw.isNull(FileInfo::getBelongingHome);//仅查个人文件
+        } else if(queryInfoDTO.getBelongingHome() != null && !queryInfoDTO.getBelongingHome().equals("")) {
+            fileInfoLqw.eq(FileInfo::getBelongingHome, queryInfoDTO.getBelongingHome());//查家庭文件
+        }
         int pageSize = queryInfoDTO.getPageSize()==null?DEFAULT_PAGE_SIZE:queryInfoDTO.getPageSize();
         int pageNo = queryInfoDTO.getPageNo()==null?1:queryInfoDTO.getPageNo();
         //查询分页记录
@@ -402,15 +411,17 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
                 minioUtils.getFile(tsPath,response);
             }
             else {
+            // 先查询文件信息，不限制userId，支持家庭文件访问
             LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
             fileInfoLqw.eq(FileInfo::getFileId,msg);
-            fileInfoLqw.eq(FileInfo::getUserId,userId);
             fileInfoLqw.eq(FileInfo::getFileType,FileTypeEnum.VIDEO.getType());//查询视频类型的
             fileInfoLqw.eq(FileInfo::getDelFlag,NORMAL.getFlag());//查询文件正常的
             fileInfoLqw.eq(FileInfo::getStatus,TRANS_SUCCEED.getStatus());//查询转码成功的
             FileInfo fileInfo = fileInfoMapper.selectOne(fileInfoLqw);
             if(fileInfo == null)
                 throw new MyException("文件不存在或已删除",FAIL_RES_CODE);
+            // 校验文件访问权限
+            validateFileAccess(fileInfo, userId);
             String filePath = fileInfo.getFilePath();
             String fileFolder = filePath.substring(0,filePath.lastIndexOf("/"));
             session.setAttribute(SESSION_VIDEO_PATH_KEY,fileFolder);//存储该文件路径，方便后续获取ts文件
@@ -428,14 +439,16 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
      */
     @Override
     public void getFile(HttpServletResponse response, String fileId, String userId, HttpSession session) throws MyException {
+        // 先查询文件信息，不限制userId，支持家庭文件访问
         LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFileId,fileId);
-        fileInfoLqw.eq(FileInfo::getUserId,userId);
         fileInfoLqw.eq(FileInfo::getDelFlag,NORMAL.getFlag());
         fileInfoLqw.eq(FileInfo::getStatus,TRANS_SUCCEED.getStatus());
         FileInfo fileInfo = fileInfoMapper.selectOne(fileInfoLqw);
         if(fileInfo == null)
             throw new MyException("文件不存在或已删除",FAIL_RES_CODE);
+        // 校验文件访问权限
+        validateFileAccess(fileInfo, userId);
         String filePath = fileInfo.getFilePath();
         try {
             minioUtils.getFile(filePath,response);
@@ -447,6 +460,30 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
     }
 
     /**
+     * 校验文件访问权限
+     * @param fileInfo 文件信息
+     * @param userId 当前用户ID
+     * @throws MyException 无权限访问时抛出异常
+     */
+    private void validateFileAccess(FileInfo fileInfo, String userId) throws MyException {
+        // 如果是家庭文件，校验用户是否属于该家庭
+        if (fileInfo.getBelongingHome() != null && !fileInfo.getBelongingHome().isEmpty()) {
+            LambdaQueryWrapper<com.example.homic.model.FamilyMember> memberLqw = new LambdaQueryWrapper<>();
+            memberLqw.eq(com.example.homic.model.FamilyMember::getFamilyId, fileInfo.getBelongingHome());
+            memberLqw.eq(com.example.homic.model.FamilyMember::getUserId, userId);
+            Long count = familyMemberMapper.selectCount(memberLqw);
+            if (count == 0) {
+                throw new MyException("无权限访问该文件", FAIL_RES_CODE);
+            }
+        } else {
+            // 个人文件，校验userId是否匹配
+            if (!fileInfo.getUserId().equals(userId)) {
+                throw new MyException("无权限访问该文件", FAIL_RES_CODE);
+            }
+        }
+    }
+
+    /**
      * 创建下载链接
      * @param fileId
      * @param userId
@@ -454,14 +491,16 @@ public class FileServiceImpl extends CommonServiceImpl implements FileService  {
      */
     @Override
     public String getDownloadUrl(String fileId, String userId) throws MyException {
+        // 先查询文件信息，不限制userId，支持家庭文件访问
         LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFileId,fileId);
-        fileInfoLqw.eq(FileInfo::getUserId,userId);
         fileInfoLqw.eq(FileInfo::getStatus,TRANS_SUCCEED.getStatus());//查询转码成功的
         fileInfoLqw.eq(FileInfo::getFolderType,FOLDER_TYPE_FILE);//查询是实体文件的
         FileInfo fileInfo = fileInfoMapper.selectOne(fileInfoLqw);
         if( fileInfo == null)
             throw new MyException("文件不存在或已删除",FAIL_RES_CODE);
+        // 校验文件访问权限
+        validateFileAccess(fileInfo, userId);
         //将路径存入redis,key是临时生成的code
         String filePath = fileInfo.getFilePath();
         String downloadUrlCode = StringUtils.getSerialNumber(30);

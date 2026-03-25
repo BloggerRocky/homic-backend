@@ -1,0 +1,85 @@
+package com.example.homic.controller;
+
+import com.example.homic.annotation.GlobalInteceptor;
+import com.example.homic.dto.frontEnd.QueryInfoDTO;
+import com.example.homic.dto.frontEnd.UploadDTO;
+import com.example.homic.dto.session.SessionWebUserDTO;
+import com.example.homic.exception.MyException;
+import com.example.homic.services.FamilySpaceService;
+import com.example.homic.vo.FileInfoVO;
+import com.example.homic.vo.ResponseVO;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpSession;
+
+import static com.example.homic.constants.CodeConstants.*;
+
+/**
+ * 家庭空间文件控制器
+ * 仅负责请求转发，所有业务逻辑在 FamilySpaceService 中处理
+ */
+@RestController
+@RequestMapping("/familySpace")
+public class FamilySpaceController extends CommonController {
+
+    @Autowired
+    private FamilySpaceService familySpaceService;
+
+    /**
+     * 加载家庭文件列表
+     */
+    @RequestMapping("/loadDataList")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO loadDataList(
+            HttpSession session,
+            QueryInfoDTO queryInfo,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familySpaceService.loadDataList(queryInfo, userDTO.getUserId(), familyId);
+    }
+
+    /**
+     * 上传文件到家庭空间
+     */
+    @RequestMapping("/uploadFile")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO uploadFile(
+            HttpSession session,
+            UploadDTO uploadDTO,
+            String familyId) throws Exception {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        boolean isDummy = userDTO.getIsDummy() != null && userDTO.getIsDummy();
+        ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
+        responseVO.setData(familySpaceService.uploadFile(uploadDTO, userDTO.getUserId(), isDummy, familyId));
+        return responseVO;
+    }
+
+    /**
+     * 获取家庭空间使用情况
+     */
+    @RequestMapping("/getFamilySpaceUsage")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO getFamilySpaceUsage(
+            HttpSession session,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familySpaceService.getFamilySpaceUsage(userDTO.getUserId(), familyId);
+    }
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO newFolder(
+            HttpSession session,
+            String filePid,
+            String fileName,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        boolean isDummy = userDTO.getIsDummy() != null && userDTO.getIsDummy();
+        FileInfoVO folderInfo = familySpaceService.newFolder(filePid, fileName, userDTO.getUserId(), isDummy, familyId);
+        ResponseVO responseVO = folderInfo != null
+                ? new ResponseVO(SUCCESS_RES_STATUS, "创建成功")
+                : new ResponseVO(FAIL_RES_STATUS, "包含同名文件夹");
+        responseVO.setData(folderInfo);
+        return responseVO;
+    }
+}

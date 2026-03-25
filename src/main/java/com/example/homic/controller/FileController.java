@@ -42,6 +42,7 @@ public class FileController extends CommonController{
         SessionWebUserDTO userInfo = (SessionWebUserDTO)session.getAttribute(SESSION_USER_INFO_KEY);
         queryInfo.setUserId(userInfo.getUserId());
         queryInfo.setDelFlag(NORMAL.getFlag());
+        queryInfo.setFilterPersonal(true);//个人文件列表仅查个人文件
         ResponseVO responseVO = fileService.loadDataList(queryInfo);
         return responseVO;
     }

@@ -16,6 +16,7 @@ public class UploadDTO {
     private String fileMd5;
     private Integer chunkIndex;//分片索引
     private Integer chunks;//总分片数
+    private String belongingHome;//所属家庭ID，null表示个人文件
 
     public String getFileId() {
         return fileId;
@@ -73,6 +74,14 @@ public class UploadDTO {
         this.chunks = chunks;
     }
 
+    public String getBelongingHome() {
+        return belongingHome;
+    }
+
+    public void setBelongingHome(String belongingHome) {
+        this.belongingHome = belongingHome;
+    }
+
     public UploadDTO() {
     }
 
@@ -86,6 +95,7 @@ public class UploadDTO {
                 ", fileMd5='" + fileMd5 + '\'' +
                 ", chunkIndex='" + chunkIndex + '\'' +
                 ", chucks='" + chunks + '\'' +
+                ", belongingHome='" + belongingHome + '\'' +
                 '}';
     }
 }

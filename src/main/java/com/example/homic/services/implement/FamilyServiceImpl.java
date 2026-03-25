@@ -64,6 +64,10 @@ public class FamilyServiceImpl implements FamilyService {
 
         Map<String, Object> result = new HashMap<>();
         result.put("hasFamily", member != null);
+        if (member != null) {
+            result.put("familyId", member.getFamilyId());
+            result.put("role", member.getRole());
+        }
 
         ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "查询成功");
         responseVO.setData(result);

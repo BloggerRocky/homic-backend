@@ -20,6 +20,8 @@ public interface FileInfoMapper  extends BaseMapper<FileInfo> {
     FileInfo selectOneByFileMd5 (String fileMd5);
     //获取用户已用空间大小
     Long getSizeByUserId(String userId);
+    //获取家庭已用空间大小
+    Long getSizeByFamilyId(String familyId);
     //获取文件的子文件
     String[] getSubFileById(String[] fileIds);
     //根据文件ID和用户ID查询文件

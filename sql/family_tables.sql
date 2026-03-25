@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS `family` (
     `family_avatar` VARCHAR(150) DEFAULT NULL COMMENT '家庭头像',
     `family_code` VARCHAR(10) NOT NULL COMMENT '家庭码',
     `creator_id` VARCHAR(15) NOT NULL COMMENT '创建者ID',
+    `use_space` BIGINT NOT NULL DEFAULT 0 COMMENT '已用空间（单位Byte）',
+    `total_space` BIGINT NOT NULL DEFAULT 1073741824 COMMENT '总空间（单位Byte，默认1GB）',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`family_id`),
