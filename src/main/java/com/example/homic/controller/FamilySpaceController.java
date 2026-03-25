@@ -50,9 +50,8 @@ public class FamilySpaceController extends CommonController {
             UploadDTO uploadDTO,
             String familyId) throws Exception {
         SessionWebUserDTO userDTO = getUserInfoFromSession(session);
-        boolean isDummy = userDTO.getIsDummy() != null && userDTO.getIsDummy();
         ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS);
-        responseVO.setData(familySpaceService.uploadFile(uploadDTO, userDTO.getUserId(), isDummy, familyId));
+        responseVO.setData(familySpaceService.uploadFile(uploadDTO, userDTO.getUserId(), familyId));
         return responseVO;
     }
 
@@ -93,12 +92,52 @@ public class FamilySpaceController extends CommonController {
             String fileName,
             String familyId) throws MyException {
         SessionWebUserDTO userDTO = getUserInfoFromSession(session);
-        boolean isDummy = userDTO.getIsDummy() != null && userDTO.getIsDummy();
-        FileInfoVO folderInfo = familySpaceService.newFolder(filePid, fileName, userDTO.getUserId(), isDummy, familyId);
+        FileInfoVO folderInfo = familySpaceService.newFolder(filePid, fileName, userDTO.getUserId(), familyId);
         ResponseVO responseVO = folderInfo != null
                 ? new ResponseVO(SUCCESS_RES_STATUS, "创建成功")
                 : new ResponseVO(FAIL_RES_STATUS, "包含同名文件夹");
         responseVO.setData(folderInfo);
         return responseVO;
+    }
+
+    /**
+     * 删除家庭空间文件
+     */
+    @RequestMapping("/delFile")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO delFile(
+            HttpSession session,
+            String fileIds,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familySpaceService.deleteFamilyFiles(fileIds, userDTO.getUserId(), familyId);
+    }
+
+    /**
+     * 重命名家庭空间文件
+     */
+    @RequestMapping("/rename")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO rename(
+            HttpSession session,
+            String fileId,
+            String fileName,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familySpaceService.renameFile(fileId, fileName, userDTO.getUserId(), familyId);
+    }
+
+    /**
+     * 移动家庭空间文件
+     */
+    @RequestMapping("/changeFileFolder")
+    @GlobalInteceptor(checkLogin = true)
+    public ResponseVO changeFileFolder(
+            HttpSession session,
+            String fileIds,
+            String filePid,
+            String familyId) throws MyException {
+        SessionWebUserDTO userDTO = getUserInfoFromSession(session);
+        return familySpaceService.changeFileFolder(fileIds, filePid, userDTO.getUserId(), familyId);
     }
 }

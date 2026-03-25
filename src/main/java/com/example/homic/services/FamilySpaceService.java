@@ -25,28 +25,25 @@ public interface FamilySpaceService {
 
     /**
      * 上传文件到家庭空间
-     * 包含权限校验（关怀账号和普通成员不能上传）和家庭空间容量校验
+     * 包含家庭空间容量校验
      * @param uploadDTO 上传参数
      * @param userId 当前用户ID
-     * @param isDummy 是否为关怀账号
      * @param familyId 家庭ID
      * @return 上传结果
      * @throws Exception
      */
-    UploadVO uploadFile(UploadDTO uploadDTO, String userId, boolean isDummy, String familyId) throws Exception;
+    UploadVO uploadFile(UploadDTO uploadDTO, String userId, String familyId) throws Exception;
 
     /**
      * 在家庭空间新建文件夹
-     * 包含权限校验（关怀账号和普通成员不能新建）
      * @param filePid 父文件夹ID
      * @param fileName 文件夹名称
      * @param userId 当前用户ID
-     * @param isDummy 是否为关怀账号
      * @param familyId 家庭ID
      * @return 文件夹信息
      * @throws MyException
      */
-    FileInfoVO newFolder(String filePid, String fileName, String userId, boolean isDummy, String familyId) throws MyException;
+    FileInfoVO newFolder(String filePid, String fileName, String userId, String familyId) throws MyException;
 
     /**
      * 刷新家庭空间使用量（更新DB和Redis缓存）
@@ -73,4 +70,36 @@ public interface FamilySpaceService {
      * @throws MyException
      */
     ResponseVO loadAllFolder(String filePid, String currentFileIds, String userId, String familyId) throws MyException;
+
+    /**
+     * 删除家庭空间文件
+     * @param fileIds 文件ID列表（逗号分隔）
+     * @param userId 当前用户ID
+     * @param familyId 家庭ID
+     * @return 删除结果
+     * @throws MyException
+     */
+    ResponseVO deleteFamilyFiles(String fileIds, String userId, String familyId) throws MyException;
+
+    /**
+     * 重命名家庭空间文件
+     * @param fileId 文件ID
+     * @param fileName 新文件名
+     * @param userId 当前用户ID
+     * @param familyId 家庭ID
+     * @return 重命名结果
+     * @throws MyException
+     */
+    ResponseVO renameFile(String fileId, String fileName, String userId, String familyId) throws MyException;
+
+    /**
+     * 移动家庭空间文件
+     * @param fileIds 文件ID列表（逗号分隔）
+     * @param filePid 目标父文件夹ID
+     * @param userId 当前用户ID
+     * @param familyId 家庭ID
+     * @return 移动结果
+     * @throws MyException
+     */
+    ResponseVO changeFileFolder(String fileIds, String filePid, String userId, String familyId) throws MyException;
 }

@@ -6,6 +6,7 @@ import com.example.homic.exception.MyException;
 import com.example.homic.mapper.*;
 import com.example.homic.model.*;
 import com.example.homic.services.FamilyService;
+import com.example.homic.services.PermissionService;
 import com.example.homic.utils.MinioUtils;
 import com.example.homic.utils.StringUtils;
 import com.example.homic.vo.*;
@@ -55,6 +56,9 @@ public class FamilyServiceImpl implements FamilyService {
 
     @Resource
     private MinioUtils minioUtils;
+
+    @Resource
+    private PermissionService permissionService;
 
     @Override
     public ResponseVO checkFamily(String userId) {
@@ -106,6 +110,9 @@ public class FamilyServiceImpl implements FamilyService {
         member.setRole(0);  // 0-创建者
         member.setJoinTime(new Date());
         familyMemberMapper.insert(member);
+
+        // 初始化创建者权限（创建者拥有所有权限）
+        permissionService.initDefaultPermissions(userId, familyId, 0);
 
         return new ResponseVO(SUCCESS_RES_STATUS, "创建家庭成功");
     }
@@ -310,6 +317,9 @@ public class FamilyServiceImpl implements FamilyService {
         member.setRole(2);  // 2-成员
         member.setJoinTime(new Date());
         familyMemberMapper.insert(member);
+
+        // 初始化成员权限（普通成员默认无权限）
+        permissionService.initDefaultPermissions(userId, invite.getFamilyId(), 2);
 
         // 更新邀请状态
         invite.setStatus(1);
@@ -613,6 +623,9 @@ public class FamilyServiceImpl implements FamilyService {
         newMember.setRole(2);  // 2-成员
         newMember.setJoinTime(new Date());
         familyMemberMapper.insert(newMember);
+
+        // 初始化成员权限（普通成员默认无权限）
+        permissionService.initDefaultPermissions(apply.getUserId(), apply.getFamilyId(), 2);
 
         // 更新申请状态
         apply.setStatus(1);

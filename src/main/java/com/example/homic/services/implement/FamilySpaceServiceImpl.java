@@ -21,6 +21,7 @@ import com.example.homic.model.Family;
 import com.example.homic.model.FamilyMember;
 import com.example.homic.model.file.FileInfo;
 import com.example.homic.services.FamilySpaceService;
+import com.example.homic.services.PermissionService;
 import com.example.homic.utils.MinioUtils;
 import com.example.homic.utils.RedisUtils;
 import com.example.homic.utils.StringUtils;
@@ -34,15 +35,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.example.homic.constants.CodeConstants.*;
 import static com.example.homic.constants.NormalConstants.*;
 import static com.example.homic.constants.enums.DatePatternEnum.YEAR_MONTH_DAY;
 import static com.example.homic.constants.enums.FileFlagEnum.NORMAL;
+import static com.example.homic.constants.enums.FileFlagEnum.RECYCLE;
 import static com.example.homic.constants.enums.FileStatusEnum.*;
 import static com.example.homic.constants.enums.UploadStatusEnum.*;
 
@@ -57,6 +61,8 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
     private FamilyMapper familyMapper;
     @Autowired
     private FamilyMemberMapper familyMemberMapper;
+    @Resource
+    private PermissionService permissionService;
     @Autowired
     private UserInfoMapper userInfoMapper;
     @Autowired
@@ -87,21 +93,6 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             throw new MyException("您不属于该家庭", FAIL_RES_CODE);
         }
         return member;
-    }
-
-    /**
-     * 校验上传/新建权限
-     * 关怀账号不能操作，普通成员（role=2）不能操作
-     * 只有创建者（role=0）和管理员（role=1）可以操作
-     */
-    private void validateUploadPermission(String userId, boolean isDummy, String familyId) throws MyException {
-        if (isDummy) {
-            throw new MyException("关怀账号暂时无法上传家庭文件", FAIL_RES_CODE);
-        }
-        FamilyMember member = validateFamilyMember(userId, familyId);
-        if (member.getRole() != null && member.getRole() == 2) {
-            throw new MyException("普通成员暂时无法上传家庭文件，请联系管理员", FAIL_RES_CODE);
-        }
     }
 
     // ===================== 家庭空间管理 =====================
@@ -186,9 +177,15 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
 
     @Override
     @Transactional
-    public UploadVO uploadFile(UploadDTO uploadDTO, String userId, boolean isDummy, String familyId) throws Exception {
-        // 权限校验
-        validateUploadPermission(userId, isDummy, familyId);
+    public UploadVO uploadFile(UploadDTO uploadDTO, String userId, String familyId) throws Exception {
+        // 检查用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+
+        // 检查上传权限
+        if (!permissionService.canUpload(userId, familyId)) {
+            throw new MyException("无权限上传文件", FAIL_RES_CODE);
+        }
+
         // 设置所属家庭
         uploadDTO.setBelongingHome(familyId);
 
@@ -339,9 +336,12 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
     // ===================== 新建文件夹 =====================
 
     @Override
-    public FileInfoVO newFolder(String filePid, String fileName, String userId, boolean isDummy, String familyId) throws MyException {
-        // 权限校验
-        validateUploadPermission(userId, isDummy, familyId);
+    public FileInfoVO newFolder(String filePid, String fileName, String userId, String familyId) throws MyException {
+        // 检查上传权限（创建文件夹属于上传类操作）
+        if (!permissionService.canUpload(userId, familyId)) {
+            throw new MyException("无权限创建文件夹", FAIL_RES_CODE);
+        }
+
         // 查重
         LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
         fileInfoLqw.eq(FileInfo::getFilePid, filePid);
@@ -380,6 +380,11 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
      */
     @Override
     public ResponseVO getFamilySpaceUsage(String userId, String familyId) throws MyException {
+        // 检查查看权限
+        if (!permissionService.canView(userId, familyId)) {
+            return new ResponseVO(FAIL_RES_STATUS, "无权限查看文件");
+        }
+
         // 校验用户是否属于该家庭
         validateFamilyMember(userId, familyId);
         // 获取家庭空间信息
@@ -397,19 +402,27 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
      */
     @Override
     public ResponseVO loadAllFolder(String filePid, String currentFileIds, String userId, String familyId) throws MyException {
+        // 检查查看权限
+        if (!permissionService.canView(userId, familyId)) {
+            return new ResponseVO(FAIL_RES_STATUS, "无权限查看文件");
+        }
+
         // 校验用户是否属于该家庭
         validateFamilyMember(userId, familyId);
-        
-        // 查询当前目录中fileId不在当前多个文件id中的目录
-        String[] idArray = currentFileIds.split(",");
-        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
-        fileInfoLqw.eq(FileInfo::getFilePid, filePid);
-        fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
-        fileInfoLqw.eq(FileInfo::getFolderType, FOLDER_TYPE_FOLDER);
-        fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
-        fileInfoLqw.notIn(FileInfo::getFileId, idArray);
-        
+
         try {
+            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
+            fileInfoLqw.eq(FileInfo::getFilePid, filePid);
+            fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+            fileInfoLqw.eq(FileInfo::getFolderType, FOLDER_TYPE_FOLDER);
+            fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+
+            // 如果有需要排除的文件ID，添加排除条件
+            if (currentFileIds != null && !currentFileIds.isEmpty()) {
+                String[] idArray = currentFileIds.split(",");
+                fileInfoLqw.notIn(FileInfo::getFileId, idArray);
+            }
+
             List<FileInfo> fileInfos = fileInfoMapper.selectList(fileInfoLqw);
             List<FileInfoVO> fileInfoVOs = fileInfos.stream()
                     .map(fileInfo -> modelMapper.map(fileInfo, FileInfoVO.class))
@@ -418,7 +431,176 @@ public class FamilySpaceServiceImpl implements FamilySpaceService {
             responseVO.setData(fileInfoVOs);
             return responseVO;
         } catch (Exception e) {
+            logger.error("获取家庭空间文件夹列表失败", e);
             throw new MyException("获取文件夹信息失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 删除家庭空间文件
+     */
+    @Override
+    @Transactional
+    public ResponseVO deleteFamilyFiles(String fileIds, String userId, String familyId) throws MyException {
+        // 检查删除权限
+        if (!permissionService.canDelete(userId, familyId)) {
+            return new ResponseVO(FAIL_RES_STATUS, "无权限删除文件");
+        }
+
+        // 校验用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+
+        try {
+            // 将所有待删除文件的状态改成回收站
+            List<String> fileIdsList = List.of(fileIds.split(","));
+            LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
+            fileInfoLqw.in(FileInfo::getFileId, fileIdsList);
+            fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+            fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+
+            FileInfo fileInfo = new FileInfo();
+            fileInfo.setRecoveryTime(new Date());
+            fileInfo.setDelFlag(RECYCLE.getFlag());
+            fileInfoMapper.update(fileInfo, fileInfoLqw);
+
+            // 刷新家庭空间使用量
+            refreshFamilySpace(familyId);
+
+            return new ResponseVO(SUCCESS_RES_STATUS, "文件删除成功");
+        } catch (Exception e) {
+            logger.error("删除家庭空间文件失败", e);
+            throw new MyException("删除文件失败", FAIL_RES_CODE);
+        }
+    }
+
+    /**
+     * 重命名家庭空间文件
+     */
+    @Override
+    @Transactional
+    public ResponseVO renameFile(String fileId, String fileName, String userId, String familyId) throws MyException {
+        // 检查修改权限
+        if (!permissionService.canModify(userId, familyId)) {
+            return new ResponseVO(FAIL_RES_STATUS, "无权限重命名文件");
+        }
+
+        // 校验用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+
+        // 查询文件
+        LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
+        fileInfoLqw.eq(FileInfo::getFileId, fileId);
+        fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+        fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+        FileInfo dbFile = fileInfoMapper.selectOne(fileInfoLqw);
+
+        if (dbFile == null) {
+            throw new MyException("文件不存在", FAIL_RES_CODE);
+        }
+
+        // 检查文件名是否包含斜杠
+        if (fileName.contains("/")) {
+            throw new MyException("文件名不能包含斜杠", FAIL_RES_CODE);
+        }
+
+        // 获取原始文件名后缀
+        String suffix = dbFile.getFileName().substring(dbFile.getFileName().lastIndexOf("."));
+        String newFileName = fileName + suffix;
+
+        // 检查是否有同名文件
+        LambdaQueryWrapper<FileInfo> checkLqw = new LambdaQueryWrapper<>();
+        checkLqw.eq(FileInfo::getFilePid, dbFile.getFilePid());
+        checkLqw.eq(FileInfo::getFileName, newFileName);
+        checkLqw.eq(FileInfo::getBelongingHome, familyId);
+        checkLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+        checkLqw.ne(FileInfo::getFileId, fileId);
+
+        if (fileInfoMapper.selectCount(checkLqw) > 0) {
+            throw new MyException("该目录下已存在同名文件", FAIL_RES_CODE);
+        }
+
+        // 更新文件名
+        FileInfo updateInfo = new FileInfo();
+        updateInfo.setFileName(newFileName);
+        updateInfo.setLastUpdateTime(new Date());
+        fileInfoMapper.update(updateInfo, fileInfoLqw);
+
+        // 返回更新后的文件信息
+        dbFile.setFileName(newFileName);
+        FileInfoVO fileInfoVO = modelMapper.map(dbFile, FileInfoVO.class);
+        ResponseVO responseVO = new ResponseVO(SUCCESS_RES_STATUS, "重命名成功");
+        responseVO.setData(fileInfoVO);
+        return responseVO;
+    }
+
+    /**
+     * 移动家庭空间文件
+     */
+    @Override
+    @Transactional
+    public ResponseVO changeFileFolder(String fileIds, String filePid, String userId, String familyId) throws MyException {
+        // 检查修改权限
+        if (!permissionService.canModify(userId, familyId)) {
+            return new ResponseVO(FAIL_RES_STATUS, "无权限移动文件");
+        }
+
+        // 校验用户是否属于该家庭
+        validateFamilyMember(userId, familyId);
+
+        try {
+            String[] fileIdArray = fileIds.split(",");
+            for (String fileId : fileIdArray) {
+                // 查询文件
+                LambdaQueryWrapper<FileInfo> fileInfoLqw = new LambdaQueryWrapper<>();
+                fileInfoLqw.eq(FileInfo::getFileId, fileId);
+                fileInfoLqw.eq(FileInfo::getBelongingHome, familyId);
+                fileInfoLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+                FileInfo dbFile = fileInfoMapper.selectOne(fileInfoLqw);
+
+                if (dbFile == null) {
+                    continue; // 跳过不存在的文件
+                }
+
+                // 检查目标文件夹是否有效
+                if (!"0".equals(filePid)) {
+                    LambdaQueryWrapper<FileInfo> folderLqw = new LambdaQueryWrapper<>();
+                    folderLqw.eq(FileInfo::getFileId, filePid);
+                    folderLqw.eq(FileInfo::getBelongingHome, familyId);
+                    folderLqw.eq(FileInfo::getFolderType, FOLDER_TYPE_FOLDER);
+                    folderLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+                    if (fileInfoMapper.selectCount(folderLqw) == 0) {
+                        throw new MyException("目标文件夹不存在", FAIL_RES_CODE);
+                    }
+                }
+
+                // 检查是否有同名文件
+                LambdaQueryWrapper<FileInfo> checkLqw = new LambdaQueryWrapper<>();
+                checkLqw.eq(FileInfo::getFilePid, filePid);
+                checkLqw.eq(FileInfo::getFileName, dbFile.getFileName());
+                checkLqw.eq(FileInfo::getBelongingHome, familyId);
+                checkLqw.eq(FileInfo::getDelFlag, NORMAL.getFlag());
+                checkLqw.ne(FileInfo::getFileId, fileId);
+
+                if (fileInfoMapper.selectCount(checkLqw) > 0) {
+                    throw new MyException("目标目录下已存在同名文件: " + dbFile.getFileName(), FAIL_RES_CODE);
+                }
+
+                // 更新父文件夹ID
+                FileInfo updateInfo = new FileInfo();
+                updateInfo.setFilePid(filePid);
+                updateInfo.setLastUpdateTime(new Date());
+                LambdaQueryWrapper<FileInfo> updateLqw = new LambdaQueryWrapper<>();
+                updateLqw.eq(FileInfo::getFileId, fileId);
+                updateLqw.eq(FileInfo::getBelongingHome, familyId);
+                fileInfoMapper.update(updateInfo, updateLqw);
+            }
+
+            return new ResponseVO(SUCCESS_RES_STATUS, "移动成功");
+        } catch (MyException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("移动家庭空间文件失败", e);
+            throw new MyException("移动文件失败", FAIL_RES_CODE);
         }
     }
 }
